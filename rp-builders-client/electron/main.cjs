@@ -4,6 +4,12 @@ const { spawn } = require('child_process');
 const http = require('http');
 const fs = require('fs');
 
+// Disable hardware acceleration to eliminate Windows GPU rendering flicker
+app.disableHardwareAcceleration();
+app.commandLine.appendSwitch('disable-gpu');
+app.commandLine.appendSwitch('disable-software-rasterizer');
+app.commandLine.appendSwitch('disable-gpu-compositing');
+
 let mainWindow = null;
 let serverProcess = null;
 
