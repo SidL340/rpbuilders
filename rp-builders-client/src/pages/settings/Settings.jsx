@@ -23,6 +23,7 @@ import {
   Image,
   Trash2
 } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
 import { settingsAPI } from '../../services/api';
 import { formatBSDate, adToBs } from '../../utils/nepaliDate';
 import { useCompany } from '../../contexts/CompanyContext';
@@ -31,8 +32,10 @@ import Modal from '../../components/ui/Modal';
 import toast from 'react-hot-toast';
 
 export default function Settings() {
+  const [searchParams] = useSearchParams();
+  const initialTab = searchParams.get('tab') || 'company';
   const { updateCompany } = useCompany();
-  const [activeTab, setActiveTab] = useState('company'); // 'company' | 'backup' | 'updates'
+  const [activeTab, setActiveTab] = useState(initialTab); // 'company' | 'backup' | 'updates'
   const [form, setForm] = useState({
     company_name: '',
     company_name_np: '',
@@ -87,7 +90,11 @@ export default function Settings() {
 
   useEffect(() => {
     loadData();
-  }, []);
+    const tab = searchParams.get('tab');
+    if (tab && ['company', 'backup', 'updates'].includes(tab)) {
+      setActiveTab(tab);
+    }
+  }, [searchParams]);
 
   const handleLogoChange = (e) => {
     const file = e.target.files?.[0];
@@ -602,7 +609,7 @@ export default function Settings() {
                     </span>
                   </div>
                   <p className="text-xs text-purple-200 mt-0.5">
-                    Developed & Maintained by <strong className="text-white">Nirmala Tech Innovations Pvt. Ltd.</strong>
+                    Official Desktop System Maintenance & Upgrades
                   </p>
                 </div>
               </div>
@@ -657,6 +664,41 @@ export default function Settings() {
                 <span className="text-purple-300 text-[10px] block">डेभलपर पासकोड:</span>
                 <span className="font-mono font-black text-amber-400 mt-0.5 block">••••• (Protected)</span>
               </div>
+            </div>
+
+            {/* Live Update Status Banner */}
+            {updateStatus && (
+              <div className="p-4 bg-emerald-950/80 border border-emerald-500/40 rounded-2xl flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+                  <div>
+                    <span className="font-bold text-emerald-200 block text-xs">
+                      {updateStatus.hasUpdate ? 'नयाँ अपडेट उपलब्ध छ!' : 'सफ्टवेयर पूर्ण रूपमा पछिल्लो भर्सनमा छ (Up to Date)'}
+                    </span>
+                    <span className="text-[11px] text-emerald-300/80 block">
+                      हालको भर्सन: v{updateStatus.currentVersion} • {updateStatus.releaseNotes}
+                    </span>
+                  </div>
+                </div>
+                <span className="text-[10px] font-mono text-emerald-400 bg-emerald-900/60 px-2.5 py-1 rounded-lg border border-emerald-500/30">
+                  {updateStatus.releaseDate}
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Database Zero-Data-Loss Safety Guarantee Card */}
+          <div className="bg-emerald-50 border border-emerald-200 rounded-3xl p-5 sm:p-6 flex items-start gap-4">
+            <div className="w-10 h-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-sm">
+              <Shield className="w-5 h-5" />
+            </div>
+            <div className="space-y-1 text-xs">
+              <h4 className="font-black text-emerald-900 text-sm">
+                १००% डाटाबेस सुरक्षा ग्यारेन्टी (Zero Data Loss Architecture)
+              </h4>
+              <p className="text-emerald-800 leading-relaxed">
+                सफ्टवेयर अपडेट गर्दा वा नयाँ सेटअप इन्स्टल गर्दा <strong>तपाईंको कुनै पनि पुरानो हिसाब, भौचर वा डाटा मेटिँदैन</strong>। R.P. Builders ERP को डाटाबेस विन्डोजको सुरक्षित <code className="bg-emerald-100 px-1 py-0.5 rounded font-mono font-bold text-emerald-900">AppData/Roaming</code> वा तोकिएको सुरक्षित हार्डडिस्क फोल्डरमा अलग्गै बस्दछ। नयाँ सफ्टवेयर इन्स्टल भएपछि यसले स्वचालित रूपमा पुरानो डाटा जोडेर नयाँ कोलमहरू सुरक्षित रूपमा माइग्रेसन गर्दछ।
+              </p>
             </div>
           </div>
 

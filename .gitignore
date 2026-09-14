@@ -11,6 +11,7 @@
 **/dist-server/
 rp-builders-client/release/
 FINAL-CLIENT-DELIVERY/*.exe
+FINAL-CLIENT-DELIVERY/*App/
 
 # SQLite local databases & live data
 rp-builders-server/data/*.db

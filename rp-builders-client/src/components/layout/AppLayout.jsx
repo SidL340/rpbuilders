@@ -178,15 +178,18 @@ export default function AppLayout() {
           ))}
         </nav>
 
-        {/* Developer Attribution Footer */}
-        <div className="p-4 border-t border-slate-800 bg-slate-950/60 text-center">
-          <div className="flex items-center justify-center gap-1.5 text-[11px] font-bold text-slate-300">
-            <Code2 className="w-3.5 h-3.5 text-blue-400" />
-            <span>Nirmala Tech Innovations</span>
+        {/* Sidebar Bottom: Version & Update Status */}
+        <div className="p-3 border-t border-slate-800 bg-slate-950/60 flex items-center justify-between text-[11px]">
+          <div className="flex items-center gap-1.5 text-slate-400 font-mono">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span>v1.0.0</span>
           </div>
-          <p className="text-[10px] text-slate-400 mt-0.5 font-medium">
-            Software Developer & Tech Partner
-          </p>
+          <NavLink
+            to="/settings?tab=updates"
+            className="text-[10px] font-bold text-blue-400 hover:text-blue-300 transition"
+          >
+            अपडेट जाँच
+          </NavLink>
         </div>
       </aside>
 
@@ -202,10 +205,12 @@ export default function AppLayout() {
           </div>
 
           {/* Bottom Footer Attribution */}
-          <div className="max-w-7xl mx-auto mt-12 pt-6 border-t border-slate-200 text-center no-print">
-            <p className="text-xs text-slate-500 font-medium">
-              R.P. Builders Pvt. Ltd. Accounting Portal • Developed & Maintained by{' '}
-              <span className="font-bold text-slate-800">Nirmala Tech Innovations Pvt. Ltd.</span>
+          <div className="max-w-7xl mx-auto mt-12 pt-6 border-t border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-slate-500 font-medium no-print">
+            <p>
+              © २०८३ R.P. Builders Pvt. Ltd. All rights reserved.
+            </p>
+            <p className="text-[11px] text-slate-400">
+              Developed by <span className="text-slate-600 font-semibold">Nirmala Tech Innovations</span>
             </p>
           </div>
         </main>

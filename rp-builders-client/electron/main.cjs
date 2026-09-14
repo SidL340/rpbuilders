@@ -94,7 +94,7 @@ async function createWindow() {
     height: 850,
     minWidth: 1024,
     minHeight: 700,
-    title: 'R.P. Builders ERP — Nirmala Tech Innovations Pvt. Ltd.',
+    title: 'R.P. Builders ERP',
     backgroundColor: '#0f172a',
     show: false,
     webPreferences: {

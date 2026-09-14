@@ -2,7 +2,7 @@ import React from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCompany } from '../../contexts/CompanyContext';
 import { todayBS, formatBSDate, getFiscalYear } from '../../utils/nepaliDate';
-import { Calendar, LogOut, User, Menu, PlusCircle, BookmarkCheck } from 'lucide-react';
+import { Calendar, LogOut, User, Menu, PlusCircle, BookmarkCheck, RefreshCw } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export default function Topbar({ onToggleSidebar }) {
@@ -58,11 +58,15 @@ export default function Topbar({ onToggleSidebar }) {
           <span>दैनिक इन्ट्री</span>
         </Link>
 
-        {/* Developer Info Chip */}
-        <div className="hidden xl:flex items-center gap-1 text-[11px] font-medium text-slate-500 bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-200">
-          <span className="text-[10px] text-slate-400">Dev:</span>
-          <span className="font-bold text-slate-700">Nirmala Tech Innovations</span>
-        </div>
+        {/* Check Update Button */}
+        <Link
+          to="/settings?tab=updates"
+          title="Check for Software Updates"
+          className="hidden sm:inline-flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-blue-600 bg-slate-50 hover:bg-blue-50 px-3 py-1.5 rounded-xl border border-slate-200 transition"
+        >
+          <RefreshCw className="w-3.5 h-3.5 text-blue-600" />
+          <span>अपडेट चेक (Updates)</span>
+        </Link>
 
         {/* User Info */}
         <div className="flex items-center gap-2.5 pl-2 border-l border-slate-200">

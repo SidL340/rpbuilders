@@ -139,13 +139,13 @@ export default function LoginPage() {
         </div>
       </div>
 
-      {/* Software Developer Attribution Footer */}
+      {/* Footer Attribution */}
       <div className="max-w-6xl w-full mx-auto text-center pt-4 border-t border-slate-200/80">
-        <p className="text-xs font-medium text-slate-500">
-          Developed & Maintained by <span className="font-black text-slate-800">Nirmala Tech Innovations Pvt. Ltd.</span>
+        <p className="text-xs text-slate-500">
+          © २०८३ R.P. Builders Pvt. Ltd. • All rights reserved
         </p>
-        <p className="text-[11px] text-slate-400 mt-0.5">
-          Enterprise Construction ERP & Accounting Solutions • Nepal
+        <p className="text-[10px] text-slate-400 mt-0.5">
+          Software Architecture & Development: Nirmala Tech Innovations
         </p>
       </div>
     </div>
