@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Outlet, NavLink, useLocation } from 'react-router-dom';
 import Topbar from './Topbar';
+import { useCompany } from '../../contexts/CompanyContext';
 import {
   LayoutDashboard,
   Building2,
@@ -19,7 +20,8 @@ import {
   Shield,
   Menu,
   X,
-  Code2
+  Code2,
+  Scale
 } from 'lucide-react';
 
 const NAV_GROUPS = [
@@ -41,6 +43,7 @@ const NAV_GROUPS = [
     items: [
       { to: '/vouchers/entry', label: 'दैनिक इन्ट्री (New Entry)', icon: PlusCircle, badge: 'Quick' },
       { to: '/vouchers/daybook', label: 'दैनिक रोजनामचा (Day Book)', icon: BookOpen },
+      { to: '/reports/journal', label: 'जर्नल भौचर (General Journal)', icon: Scale },
       { to: '/parties', label: 'पार्टी खाता (Party Ledgers)', icon: Users },
     ]
   },
@@ -63,6 +66,7 @@ const NAV_GROUPS = [
   {
     title: 'Financial Reports',
     items: [
+      { to: '/reports/journal', label: 'General Journal (जर्नल खाता)', icon: Scale },
       { to: '/reports/profit-loss', label: 'Project P&L (नाफा/नोक्सान)', icon: BarChart3 },
       { to: '/reports/expenses', label: 'Expense Summary (खर्च विवरण)', icon: BarChart3 },
       { to: '/reports/trial-balance', label: 'Trial Balance (सन्तुलन)', icon: BarChart3 },
@@ -81,6 +85,7 @@ const NAV_GROUPS = [
 export default function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
+  const { company } = useCompany();
 
   return (
     <div className="flex h-screen bg-slate-100 font-sans overflow-hidden text-slate-850">
@@ -100,21 +105,31 @@ export default function AppLayout() {
       >
         {/* Company Header */}
         <div className="p-5 border-b border-slate-800 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white font-black shadow-md shadow-blue-500/20">
-              <Building2 className="w-5 h-5" />
-            </div>
-            <div>
-              <h1 className="font-black text-white text-sm tracking-tight leading-none">
-                R.P. BUILDERS
+          <div className="flex items-center gap-3 min-w-0">
+            {company?.company_logo_data ? (
+              <img
+                src={company.company_logo_data}
+                alt="Logo"
+                className="w-10 h-10 rounded-xl object-contain bg-white p-1 shadow-md shrink-0"
+              />
+            ) : (
+              <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white font-black shadow-md shadow-blue-500/20 shrink-0">
+                <Building2 className="w-5 h-5" />
+              </div>
+            )}
+            <div className="min-w-0">
+              <h1 className="font-black text-white text-sm tracking-tight leading-none truncate">
+                {company?.company_name || 'R.P. BUILDERS'}
               </h1>
-              <p className="text-[10px] text-blue-400 font-bold mt-1">Pvt. Ltd. • Nepal</p>
+              <p className="text-[10px] text-blue-400 font-bold mt-1 truncate">
+                {company?.company_name_np || 'Pvt. Ltd. • Nepal'}
+              </p>
             </div>
           </div>
 
           <button
             onClick={() => setSidebarOpen(false)}
-            className="lg:hidden p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800"
+            className="lg:hidden p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 shrink-0"
           >
             <X className="w-5 h-5" />
           </button>

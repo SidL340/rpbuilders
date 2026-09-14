@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { useCompany } from '../../contexts/CompanyContext';
 import { Building2, Lock, User, ArrowRight, ShieldCheck, HardHat } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -9,6 +10,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState('password');
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
+  const { company } = useCompany();
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
@@ -35,12 +37,24 @@ export default function LoginPage() {
       {/* Top Header */}
       <div className="max-w-6xl w-full mx-auto flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-md shadow-blue-500/20">
-            <Building2 className="w-6 h-6" />
-          </div>
+          {company?.company_logo_data ? (
+            <img
+              src={company.company_logo_data}
+              alt="Logo"
+              className="w-11 h-11 rounded-xl object-contain bg-white p-1 shadow-md shadow-blue-500/20"
+            />
+          ) : (
+            <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-md shadow-blue-500/20">
+              <Building2 className="w-6 h-6" />
+            </div>
+          )}
           <div>
-            <h1 className="font-black text-slate-900 text-lg leading-tight tracking-tight">R.P. BUILDERS PVT. LTD.</h1>
-            <p className="text-[11px] font-semibold text-blue-700">Construction & Site Management Portal (Nepal)</p>
+            <h1 className="font-black text-slate-900 text-lg leading-tight tracking-tight">
+              {company?.company_name || 'R.P. BUILDERS PVT. LTD.'}
+            </h1>
+            <p className="text-[11px] font-semibold text-blue-700">
+              {company?.company_name_np || 'Construction & Site Management Portal (Nepal)'}
+            </p>
           </div>
         </div>
 
@@ -54,9 +68,17 @@ export default function LoginPage() {
       <div className="max-w-md w-full mx-auto my-8">
         <div className="bg-white rounded-3xl border border-slate-200/90 shadow-xl shadow-slate-300/30 p-8 sm:p-10">
           <div className="text-center mb-8">
-            <div className="w-14 h-14 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-blue-100 shadow-inner">
-              <HardHat className="w-7 h-7" />
-            </div>
+            {company?.company_logo_data ? (
+              <img
+                src={company.company_logo_data}
+                alt="Logo"
+                className="w-16 h-16 rounded-2xl object-contain bg-white p-1.5 mx-auto mb-4 border border-slate-200 shadow-sm"
+              />
+            ) : (
+              <div className="w-14 h-14 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-blue-100 shadow-inner">
+                <HardHat className="w-7 h-7" />
+              </div>
+            )}
             <h2 className="text-2xl font-black text-slate-900 tracking-tight">Sign In to Portal</h2>
             <p className="text-xs text-slate-500 mt-1">Enter your credentials to access daily accounts & site ledgers</p>
           </div>

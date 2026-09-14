@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { CompanyProvider } from './contexts/CompanyContext';
 
 // Layout
 import AppLayout from './components/layout/AppLayout';
@@ -28,6 +29,7 @@ import Reports        from './pages/reports/Reports';
 import ExpenseSummary from './pages/reports/ExpenseSummary';
 import ProfitLoss     from './pages/reports/ProfitLoss';
 import TrialBalance   from './pages/reports/TrialBalance';
+import JournalReport  from './pages/reports/JournalReport';
 import Settings       from './pages/settings/Settings';
 import Users          from './pages/settings/Users';
 import NotFound       from './pages/NotFound';
@@ -45,76 +47,80 @@ function PublicRoute({ children }) {
 export default function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
-        <Toaster
-          position="top-right"
-          toastOptions={{
-            duration: 3000,
-            style: { borderRadius: '12px', background: '#0f172a', color: '#fff', fontSize: '13px' },
-            success: { iconTheme: { primary: '#10b981', secondary: '#fff' } },
-            error:   { iconTheme: { primary: '#ef4444', secondary: '#fff' } },
-          }}
-        />
-        <Routes>
-          {/* Public */}
-          <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
+      <CompanyProvider>
+        <BrowserRouter>
+          <Toaster
+            position="top-right"
+            toastOptions={{
+              duration: 3000,
+              style: { borderRadius: '12px', background: '#0f172a', color: '#fff', fontSize: '13px' },
+              success: { iconTheme: { primary: '#10b981', secondary: '#fff' } },
+              error:   { iconTheme: { primary: '#ef4444', secondary: '#fff' } },
+            }}
+          />
+          <Routes>
+            {/* Public */}
+            <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
 
-          {/* Protected - inside AppLayout */}
-          <Route path="/" element={<PrivateRoute><AppLayout /></PrivateRoute>}>
-            <Route index element={<Dashboard />} />
+            {/* Protected - inside AppLayout */}
+            <Route path="/" element={<PrivateRoute><AppLayout /></PrivateRoute>}>
+              <Route index element={<Dashboard />} />
 
-            {/* Sites & Projects */}
-            <Route path="projects"             element={<Projects />} />
-            <Route path="projects/:id"         element={<ProjectDetail />} />
+              {/* Sites & Projects */}
+              <Route path="projects"             element={<Projects />} />
+              <Route path="projects/:id"         element={<ProjectDetail />} />
 
-            {/* Daily Entry & Day Book */}
-            <Route path="vouchers/entry"       element={<VoucherEntry />} />
-            <Route path="vouchers/new"         element={<VoucherEntry />} />
-            <Route path="vouchers/daybook"     element={<DayBook />} />
-            <Route path="daybook"              element={<DayBook />} />
-            <Route path="vouchers/list"        element={<VoucherList />} />
-            <Route path="vouchers"             element={<VoucherList />} />
+              {/* Daily Entry & Day Book */}
+              <Route path="vouchers/entry"       element={<VoucherEntry />} />
+              <Route path="vouchers/new"         element={<VoucherEntry />} />
+              <Route path="vouchers/daybook"     element={<DayBook />} />
+              <Route path="daybook"              element={<DayBook />} />
+              <Route path="vouchers/list"        element={<VoucherList />} />
+              <Route path="vouchers"             element={<VoucherList />} />
 
-            {/* Parties */}
-            <Route path="parties"              element={<Parties />} />
-            <Route path="parties/:id/ledger"   element={<PartyLedger />} />
+              {/* Parties */}
+              <Route path="parties"              element={<Parties />} />
+              <Route path="parties/:id/ledger"   element={<PartyLedger />} />
 
-            {/* Thekedar */}
-            <Route path="thekedar"             element={<Thekedar />} />
-            <Route path="thekedar/:id"         element={<ThekedarDetail />} />
+              {/* Thekedar */}
+              <Route path="thekedar"             element={<Thekedar />} />
+              <Route path="thekedar/:id"         element={<ThekedarDetail />} />
 
-            {/* Funds & Loans */}
-            <Route path="funds"                element={<FundManagement />} />
+              {/* Funds & Loans */}
+              <Route path="funds"                element={<FundManagement />} />
 
-            {/* Materials & Stock */}
-            <Route path="materials"            element={<Materials />} />
-            <Route path="materials/stock"      element={<MaterialStock />} />
+              {/* Materials & Stock */}
+              <Route path="materials"            element={<Materials />} />
+              <Route path="materials/stock"      element={<MaterialStock />} />
 
-            {/* Labour & Employees */}
-            <Route path="employees"            element={<Employees />} />
-            <Route path="employees/labour"     element={<LabourEntry />} />
-            <Route path="labour"               element={<LabourEntry />} />
+              {/* Labour & Employees */}
+              <Route path="employees"            element={<Employees />} />
+              <Route path="employees/labour"     element={<LabourEntry />} />
+              <Route path="labour"               element={<LabourEntry />} />
 
-            {/* Equipment & Machinery */}
-            <Route path="equipment"            element={<Equipment />} />
+              {/* Equipment & Machinery */}
+              <Route path="equipment"            element={<Equipment />} />
 
-            {/* Reports */}
-            <Route path="reports"              element={<Reports />} />
-            <Route path="reports/expenses"     element={<ExpenseSummary />} />
-            <Route path="reports/expense"      element={<ExpenseSummary />} />
-            <Route path="reports/profit-loss"  element={<ProfitLoss />} />
-            <Route path="reports/pnl"          element={<ProfitLoss />} />
-            <Route path="reports/trial-balance" element={<TrialBalance />} />
-            <Route path="reports/trial"        element={<TrialBalance />} />
+              {/* Reports */}
+              <Route path="reports"              element={<Reports />} />
+              <Route path="reports/journal"      element={<JournalReport />} />
+              <Route path="journal"              element={<JournalReport />} />
+              <Route path="reports/expenses"     element={<ExpenseSummary />} />
+              <Route path="reports/expense"      element={<ExpenseSummary />} />
+              <Route path="reports/profit-loss"  element={<ProfitLoss />} />
+              <Route path="reports/pnl"          element={<ProfitLoss />} />
+              <Route path="reports/trial-balance" element={<TrialBalance />} />
+              <Route path="reports/trial"        element={<TrialBalance />} />
 
-            {/* Settings */}
-            <Route path="settings"             element={<Settings />} />
-            <Route path="settings/users"       element={<Users />} />
+              {/* Settings */}
+              <Route path="settings"             element={<Settings />} />
+              <Route path="settings/users"       element={<Users />} />
 
-            <Route path="*" element={<NotFound />} />
-          </Route>
-        </Routes>
-      </BrowserRouter>
+              <Route path="*" element={<NotFound />} />
+            </Route>
+          </Routes>
+        </BrowserRouter>
+      </CompanyProvider>
     </AuthProvider>
   );
 }

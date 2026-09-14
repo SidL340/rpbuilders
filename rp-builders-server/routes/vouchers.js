@@ -395,4 +395,170 @@ router.put('/:id/cancel', authenticate, authorize('manager', 'super_admin'), asy
   }
 });
 
+// PUT /api/vouchers/:id - edit voucher entry with automatic account balance re-balancing
+router.put('/:id', authenticate, async (req, res) => {
+  const connection = await pool.getConnection();
+  await connection.beginTransaction();
+
+  try {
+    const [vouchers] = await connection.query('SELECT * FROM vouchers WHERE id = ?', [req.params.id]);
+    if (!vouchers.length) {
+      await connection.rollback();
+      return res.status(404).json({ success: false, message: 'Voucher not found' });
+    }
+    const oldVoucher = vouchers[0];
+
+    const {
+      voucher_type,
+      voucher_date_bs,
+      voucher_date_ad,
+      fiscal_year,
+      project_id,
+      party_id,
+      account_id,
+      payment_mode,
+      cheque_no,
+      cheque_date_bs,
+      bank_name,
+      bank_voucher_no,
+      cash_receiver_name,
+      cash_receiver_phone,
+      cash_handed_by,
+      reference_no,
+      category_id,
+      narration,
+      gross_amount,
+      tds_percent,
+      bill_no,
+      bill_image_path,
+      remarks,
+      status
+    } = req.body;
+
+    const vType = voucher_type || oldVoucher.voucher_type;
+    const gross = gross_amount !== undefined ? parseFloat(gross_amount) : parseFloat(oldVoucher.gross_amount);
+    const tdsPct = tds_percent !== undefined ? parseFloat(tds_percent) : parseFloat(oldVoucher.tds_percent || 0);
+    const tdsAmount = Math.round((gross * tdsPct / 100) * 100) / 100;
+    const netAmount = gross - tdsAmount;
+    const vDateBs = voucher_date_bs || oldVoucher.voucher_date_bs;
+    const computedFY = fiscal_year || calculateFiscalYear(vDateBs);
+    const vDateAd = voucher_date_ad || oldVoucher.voucher_date_ad;
+    const targetAccountId = account_id || oldVoucher.account_id;
+    const targetStatus = status || oldVoucher.status;
+
+    // 1. If old voucher was approved, reverse old balance impact
+    if (oldVoucher.status === 'approved') {
+      if (oldVoucher.voucher_type === 'payment') {
+        await connection.query(
+          'UPDATE company_accounts SET current_balance = current_balance + ? WHERE id = ?',
+          [oldVoucher.net_amount, oldVoucher.account_id]
+        );
+      } else if (oldVoucher.voucher_type === 'receipt') {
+        await connection.query(
+          'UPDATE company_accounts SET current_balance = current_balance - ? WHERE id = ?',
+          [oldVoucher.net_amount, oldVoucher.account_id]
+        );
+      }
+    }
+
+    // 2. Update the voucher row
+    await connection.query(
+      `UPDATE vouchers SET
+        voucher_type = ?, voucher_date_bs = ?, voucher_date_ad = ?, fiscal_year = ?,
+        project_id = ?, party_id = ?, account_id = ?, payment_mode = ?,
+        cheque_no = ?, cheque_date_bs = ?, bank_name = ?, bank_voucher_no = ?,
+        cash_receiver_name = ?, cash_receiver_phone = ?, cash_handed_by = ?, reference_no = ?,
+        category_id = ?, narration = ?, gross_amount = ?, tds_percent = ?, tds_amount = ?, net_amount = ?,
+        bill_no = ?, bill_image_path = ?, remarks = ?, status = ?
+      WHERE id = ?`,
+      [
+        vType, vDateBs, vDateAd, computedFY,
+        project_id !== undefined ? (project_id || null) : oldVoucher.project_id,
+        party_id !== undefined ? (party_id || null) : oldVoucher.party_id,
+        targetAccountId,
+        payment_mode || oldVoucher.payment_mode,
+        cheque_no !== undefined ? cheque_no : oldVoucher.cheque_no,
+        cheque_date_bs !== undefined ? cheque_date_bs : oldVoucher.cheque_date_bs,
+        bank_name !== undefined ? bank_name : oldVoucher.bank_name,
+        bank_voucher_no !== undefined ? bank_voucher_no : oldVoucher.bank_voucher_no,
+        cash_receiver_name !== undefined ? cash_receiver_name : oldVoucher.cash_receiver_name,
+        cash_receiver_phone !== undefined ? cash_receiver_phone : oldVoucher.cash_receiver_phone,
+        cash_handed_by !== undefined ? cash_handed_by : oldVoucher.cash_handed_by,
+        reference_no !== undefined ? reference_no : oldVoucher.reference_no,
+        category_id !== undefined ? (category_id || null) : oldVoucher.category_id,
+        narration !== undefined ? narration : oldVoucher.narration,
+        gross, tdsPct, tdsAmount, netAmount,
+        bill_no !== undefined ? bill_no : oldVoucher.bill_no,
+        bill_image_path !== undefined ? bill_image_path : oldVoucher.bill_image_path,
+        remarks !== undefined ? remarks : oldVoucher.remarks,
+        targetStatus,
+        req.params.id
+      ]
+    );
+
+    // 3. If voucher remains or is set to approved, apply new balance impact
+    if (targetStatus === 'approved') {
+      if (vType === 'payment') {
+        await connection.query(
+          'UPDATE company_accounts SET current_balance = current_balance - ? WHERE id = ?',
+          [netAmount, targetAccountId]
+        );
+      } else if (vType === 'receipt') {
+        await connection.query(
+          'UPDATE company_accounts SET current_balance = current_balance + ? WHERE id = ?',
+          [netAmount, targetAccountId]
+        );
+      }
+    }
+
+    await connection.commit();
+    res.json({
+      success: true,
+      message: 'Voucher updated successfully',
+      data: { id: req.params.id, net_amount: netAmount }
+    });
+  } catch (error) {
+    await connection.rollback();
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// DELETE /api/vouchers/:id - delete voucher entry with account balance reversal
+router.delete('/:id', authenticate, async (req, res) => {
+  const connection = await pool.getConnection();
+  await connection.beginTransaction();
+
+  try {
+    const [vouchers] = await connection.query('SELECT * FROM vouchers WHERE id = ?', [req.params.id]);
+    if (!vouchers.length) {
+      await connection.rollback();
+      return res.status(404).json({ success: false, message: 'Voucher not found' });
+    }
+    const voucher = vouchers[0];
+
+    // If approved, reverse impact on account balance
+    if (voucher.status === 'approved') {
+      if (voucher.voucher_type === 'payment') {
+        await connection.query(
+          'UPDATE company_accounts SET current_balance = current_balance + ? WHERE id = ?',
+          [voucher.net_amount, voucher.account_id]
+        );
+      } else if (voucher.voucher_type === 'receipt') {
+        await connection.query(
+          'UPDATE company_accounts SET current_balance = current_balance - ? WHERE id = ?',
+          [voucher.net_amount, voucher.account_id]
+        );
+      }
+    }
+
+    await connection.query('DELETE FROM vouchers WHERE id = ?', [req.params.id]);
+    await connection.commit();
+
+    res.json({ success: true, message: 'Voucher deleted successfully' });
+  } catch (error) {
+    await connection.rollback();
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 module.exports = router;

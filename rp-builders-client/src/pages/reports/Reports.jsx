@@ -15,6 +15,13 @@ export default function Reports() {
       color: 'bg-blue-50 text-blue-600',
     },
     {
+      title: 'General Journal Register (जर्नल भौचर किताब)',
+      desc: 'Double-entry debit and credit accounting register showing ledger postings, narration, and audits',
+      icon: Scale,
+      to: '/reports/journal',
+      color: 'bg-indigo-50 text-indigo-700',
+    },
+    {
       title: 'Expense Breakdown by Category',
       desc: 'Categorized analysis of construction materials, labor, fuel, office maintenance, and taxes',
       icon: PieChart,

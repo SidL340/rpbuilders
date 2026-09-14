@@ -18,15 +18,20 @@ import {
   ExternalLink,
   Code2,
   Terminal,
-  Layers
+  Layers,
+  Upload,
+  Image,
+  Trash2
 } from 'lucide-react';
 import { settingsAPI } from '../../services/api';
 import { formatBSDate, adToBs } from '../../utils/nepaliDate';
+import { useCompany } from '../../contexts/CompanyContext';
 import Loader from '../../components/ui/Loader';
 import Modal from '../../components/ui/Modal';
 import toast from 'react-hot-toast';
 
 export default function Settings() {
+  const { updateCompany } = useCompany();
   const [activeTab, setActiveTab] = useState('company'); // 'company' | 'backup' | 'updates'
   const [form, setForm] = useState({
     company_name: '',
@@ -37,6 +42,7 @@ export default function Settings() {
     company_pan: '',
     currency: 'NPR',
     date_format: 'BS',
+    company_logo_data: null,
   });
   const [fiscalYear, setFiscalYear] = useState(null);
   const [backupData, setBackupData] = useState({ lastBackupDate: null, lastBackupStatus: 'none', backups: [] });
@@ -83,13 +89,39 @@ export default function Settings() {
     loadData();
   }, []);
 
+  const handleLogoChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      return toast.error('कृपया फोटो फाइल (PNG, JPG, SVG, WebP) छान्नुहोस्');
+    }
+
+    if (file.size > 3 * 1024 * 1024) {
+      return toast.error('लोगोको साइज ३ MB भन्दा कम हुनुपर्दछ');
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      setForm((prev) => ({ ...prev, company_logo_data: reader.result }));
+      toast.success('नयाँ लोगो लोड भयो! कृपया "Save Company Profile" बटन थिची सुरक्षित गर्नुहोस्।');
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveLogo = () => {
+    setForm((prev) => ({ ...prev, company_logo_data: '' }));
+    toast.success('लोगो हटाइयो। सेभ गर्न "Save Company Profile" थिच्नुहोस्।');
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
       setSubmitting(true);
       const res = await settingsAPI.updateCompany(form);
       if (res.data.success) {
-        toast.success('Company settings updated successfully');
+        updateCompany(form);
+        toast.success('कम्पनी विवरण तथा लोगो सफलतापूर्वक सुरक्षित भयो (Updated successfully)!');
       }
     } catch (err) {
       toast.error(err?.response?.data?.message || 'Failed to update settings');
@@ -231,8 +263,77 @@ export default function Settings() {
         <div className="bg-white rounded-3xl border border-slate-200/90 shadow-xs p-6 sm:p-8">
           <form onSubmit={handleSubmit} className="space-y-6 text-xs">
             <div className="border-b border-slate-100 pb-4">
-              <h3 className="text-sm font-bold text-slate-900">Company Legal Identity</h3>
-              <p className="text-[11px] text-slate-400">These details appear on all printed vouchers, receipts, and day book registers.</p>
+              <h3 className="text-sm font-bold text-slate-900">Company Legal Identity & Official Logo</h3>
+              <p className="text-[11px] text-slate-400">These details and the uploaded logo appear across the portal, login screen, and on all printed vouchers & registers.</p>
+            </div>
+
+            {/* Official Logo Upload Section */}
+            <div className="p-4 sm:p-5 bg-gradient-to-br from-slate-50 to-blue-50/40 rounded-2xl border border-slate-200 flex flex-col sm:flex-row items-center gap-5">
+              {/* Logo Preview Box */}
+              <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl bg-white border-2 border-dashed border-blue-200 flex items-center justify-center overflow-hidden shadow-xs shrink-0 relative group">
+                {form.company_logo_data ? (
+                  <>
+                    <img
+                      src={form.company_logo_data}
+                      alt="R.P. Builders Logo"
+                      className="w-full h-full object-contain p-2"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleRemoveLogo}
+                      title="Remove Logo"
+                      className="absolute inset-0 bg-red-900/70 text-white flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition duration-150 cursor-pointer text-[10px] font-bold"
+                    >
+                      <Trash2 className="w-4 h-4 mb-0.5" />
+                      <span>हटाउनुहोस्</span>
+                    </button>
+                  </>
+                ) : (
+                  <div className="text-center p-2 text-slate-400">
+                    <Building className="w-8 h-8 mx-auto mb-1 text-slate-300" />
+                    <span className="text-[9px] font-bold block text-slate-500">कुनै लोगो छैन</span>
+                    <span className="text-[8px] text-slate-400">No Logo</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Upload Controls & Guide */}
+              <div className="flex-1 text-center sm:text-left space-y-2">
+                <div>
+                  <h4 className="font-black text-slate-900 text-xs">कम्पनीको आधिकारिक लोगो (Official Company Logo)</h4>
+                  <p className="text-[11px] text-slate-500 mt-0.5">
+                    R.P. Builders को लोगो अपलोड गर्नुहोस्। यो लोगो सफ्टवेयरको टपबार, साइडबार, लगइन स्क्रिन र सबै प्रिन्ट भौचर/रिपोर्टमा स्वतः देखिनेछ।
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2.5 pt-1">
+                  <label className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-xl text-xs font-bold shadow-sm shadow-blue-500/20 transition cursor-pointer">
+                    <Upload className="w-3.5 h-3.5" />
+                    <span>{form.company_logo_data ? 'लोगो परिवर्तन गर्नुहोस् (Change)' : '📁 नयाँ लोगो अपलोड (Upload Logo)'}</span>
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                      onChange={handleLogoChange}
+                      className="hidden"
+                    />
+                  </label>
+
+                  {form.company_logo_data && (
+                    <button
+                      type="button"
+                      onClick={handleRemoveLogo}
+                      className="inline-flex items-center gap-1 px-3 py-2 bg-white hover:bg-red-50 text-red-600 border border-slate-200 hover:border-red-200 rounded-xl text-xs font-semibold transition cursor-pointer"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>हटाउनुहोस् (Remove)</span>
+                    </button>
+                  )}
+
+                  <span className="text-[10px] text-slate-400 font-mono block sm:inline">
+                    (PNG, JPG, SVG, Max 3MB)
+                  </span>
+                </div>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

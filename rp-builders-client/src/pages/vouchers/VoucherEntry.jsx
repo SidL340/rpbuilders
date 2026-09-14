@@ -20,6 +20,7 @@ import {
 import { vouchersAPI, projectsAPI, partiesAPI, categoriesAPI, accountsAPI } from '../../services/api';
 import { todayBS, todayAD, bsToAd, formatBSDate, getFiscalYear } from '../../utils/nepaliDate';
 import { formatNPR, amountInWords } from '../../utils/helpers';
+import { useCompany } from '../../contexts/CompanyContext';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -46,6 +47,7 @@ const NEPALI_BANKS = [
 export default function VoucherEntry() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { company } = useCompany();
 
   const [loading, setLoading] = useState(false);
   const [projects, setProjects] = useState([]);
@@ -618,10 +620,17 @@ export default function VoucherEntry() {
             {/* Simulated Printed Voucher Receipt */}
             <div className="bg-white text-slate-900 p-5 rounded-2xl shadow-sm text-xs space-y-3 font-sans">
               <div className="text-center border-b border-slate-200 pb-2">
+                {company?.company_logo_data ? (
+                  <img
+                    src={company.company_logo_data}
+                    alt="Logo"
+                    className="h-10 max-w-[150px] object-contain mx-auto mb-1.5"
+                  />
+                ) : null}
                 <h3 className="font-black text-sm tracking-tight text-slate-900">
-                  R.P. BUILDERS PVT. LTD.
+                  {company?.company_name || 'R.P. BUILDERS PVT. LTD.'}
                 </h3>
-                <p className="text-[10px] text-slate-500">Nepal • Construction Accounting Portal</p>
+                <p className="text-[10px] text-slate-500">{company?.address || 'Nepal'} • Construction Accounting Portal</p>
                 <div className="inline-block mt-1 px-2.5 py-0.5 bg-slate-100 rounded-md font-bold text-[10px] uppercase tracking-wider text-blue-700 border border-slate-200">
                   {formData.voucher_type === 'payment' ? 'खर्च भुक्तानी भौचर (Payment Voucher)' : 'रकम प्राप्ति भौचर (Receipt Voucher)'}
                 </div>

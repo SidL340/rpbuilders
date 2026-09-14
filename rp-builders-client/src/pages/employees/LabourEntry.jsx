@@ -21,11 +21,8 @@ export default function LabourEntry() {
   const [accountId, setAccountId] = useState('');
   const [paymentMode, setPaymentMode] = useState('cash');
 
-  // Daily Muster Roll rows
-  const [rows, setRows] = useState([
-    { worker_name: 'Mason Mistri (डकर्मी दल)', worker_type: 'mason', quantity: 2, days_fraction: 1, daily_rate: 1200, remarks: 'Brick laying' },
-    { worker_name: 'Helper Labour (लेबर)', worker_type: 'helper', quantity: 4, days_fraction: 1, daily_rate: 800, remarks: 'Mortar mixing & carrying' },
-  ]);
+  // Daily Muster Roll rows - starts empty by default (no dummy data)
+  const [rows, setRows] = useState([]);
 
   useEffect(() => {
     async function load() {
@@ -55,11 +52,10 @@ export default function LabourEntry() {
   }, []);
 
   const addRow = () => {
-    setRows([...rows, { worker_name: 'Unskilled Worker', worker_type: 'unskilled', quantity: 1, days_fraction: 1, daily_rate: 800, remarks: '' }]);
+    setRows([...rows, { worker_name: '', worker_type: 'mason', quantity: 1, days_fraction: 1, daily_rate: 1000, remarks: '' }]);
   };
 
   const removeRow = (index) => {
-    if (rows.length === 1) return toast.error('At least one labour group required');
     setRows(rows.filter((_, i) => i !== index));
   };
 
@@ -79,6 +75,7 @@ export default function LabourEntry() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!projectId || !dateBs) return toast.error('Project site and date are required');
+    if (rows.length === 0) return toast.error('Please add at least one labour group (+ Add Worker Group)');
 
     try {
       setSubmitting(true);
@@ -92,10 +89,8 @@ export default function LabourEntry() {
 
       if (res.data.success) {
         toast.success(res.data.message);
-        // Reset rows
-        setRows([
-          { worker_name: 'Mason Mistri', worker_type: 'mason', quantity: 2, days_fraction: 1, daily_rate: 1200, remarks: '' }
-        ]);
+        // Reset rows to empty
+        setRows([]);
       }
     } catch (err) {
       toast.error(err?.response?.data?.message || 'Failed to record labour wages');
@@ -197,76 +192,96 @@ export default function LabourEntry() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {rows.map((r, i) => {
-                  const lineTotal = (parseFloat(r.quantity || 0) * parseFloat(r.days_fraction || 0)) * parseFloat(r.daily_rate || 0);
-                  return (
-                    <tr key={i} className="hover:bg-slate-50/50">
-                      <td className="py-2.5 px-2">
-                        <input
-                          type="text"
-                          value={r.worker_name}
-                          onChange={(e) => updateRow(i, 'worker_name', e.target.value)}
-                          className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs font-medium"
-                        />
-                      </td>
-                      <td className="py-2.5 px-2">
-                        <select
-                          value={r.worker_type}
-                          onChange={(e) => updateRow(i, 'worker_type', e.target.value)}
-                          className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs bg-white capitalize"
-                        >
-                          <option value="mason">Mason (डकर्मी)</option>
-                          <option value="helper">Helper (लेबर)</option>
-                          <option value="carpenter">Carpenter (सिकर्मी)</option>
-                          <option value="electrician">Electrician (विद्युत)</option>
-                          <option value="plumber">Plumber (प्लम्बर)</option>
-                          <option value="unskilled">Unskilled (मजदुर)</option>
-                        </select>
-                      </td>
-                      <td className="py-2.5 px-2 text-center">
-                        <input
-                          type="number"
-                          step="any"
-                          value={r.quantity}
-                          onChange={(e) => updateRow(i, 'quantity', e.target.value)}
-                          className="w-16 px-2 py-1.5 border border-slate-200 rounded-lg text-xs font-mono text-center"
-                        />
-                      </td>
-                      <td className="py-2.5 px-2 text-center">
-                        <select
-                          value={r.days_fraction}
-                          onChange={(e) => updateRow(i, 'days_fraction', e.target.value)}
-                          className="px-2 py-1.5 border border-slate-200 rounded-lg text-xs bg-white"
-                        >
-                          <option value="1">Full Day (1.0)</option>
-                          <option value="0.5">Half Day (0.5)</option>
-                          <option value="1.5">Full + OT (1.5)</option>
-                        </select>
-                      </td>
-                      <td className="py-2.5 px-2 text-right">
-                        <input
-                          type="number"
-                          step="any"
-                          value={r.daily_rate}
-                          onChange={(e) => updateRow(i, 'daily_rate', e.target.value)}
-                          className="w-24 px-2 py-1.5 border border-slate-200 rounded-lg text-xs font-mono text-right font-bold text-slate-800"
-                        />
-                      </td>
-                      <td className="py-2.5 px-2 text-right font-mono font-black text-slate-900">
-                        {formatNPR(lineTotal)}
-                      </td>
-                      <td className="py-2.5 px-2 text-center">
+                {rows.length === 0 ? (
+                  <tr>
+                    <td colSpan="7" className="py-8 text-center text-slate-400">
+                      <div className="flex flex-col items-center justify-center gap-2">
+                        <UserCheck className="w-8 h-8 text-slate-300" />
+                        <p className="text-xs font-semibold text-slate-500">कुनै मजदुर विवरण थपिएको छैन (No worker groups added)</p>
                         <button
                           type="button"
-                          onClick={() => removeRow(i)}
-                          className="p-1 rounded text-slate-400 hover:text-red-600 transition"
+                          onClick={addRow}
+                          className="mt-1 inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-lg text-xs font-bold transition cursor-pointer"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>+ नयाँ मजदुर विवरण थप्नुहोस् (Add Worker Group)</span>
                         </button>
-                      </td>
-                    </tr>
-                  );
-                })}
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  rows.map((r, i) => {
+                    const lineTotal = (parseFloat(r.quantity || 0) * parseFloat(r.days_fraction || 0)) * parseFloat(r.daily_rate || 0);
+                    return (
+                      <tr key={i} className="hover:bg-slate-50/50">
+                        <td className="py-2.5 px-2">
+                          <input
+                            type="text"
+                            placeholder="e.g. Mason Mistri / राम बहादुर"
+                            value={r.worker_name}
+                            onChange={(e) => updateRow(i, 'worker_name', e.target.value)}
+                            className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs font-medium"
+                          />
+                        </td>
+                        <td className="py-2.5 px-2">
+                          <select
+                            value={r.worker_type}
+                            onChange={(e) => updateRow(i, 'worker_type', e.target.value)}
+                            className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs bg-white capitalize"
+                          >
+                            <option value="mason">Mason (डकर्मी)</option>
+                            <option value="helper">Helper (लेबर)</option>
+                            <option value="carpenter">Carpenter (सिकर्मी)</option>
+                            <option value="electrician">Electrician (विद्युत)</option>
+                            <option value="plumber">Plumber (प्लम्बर)</option>
+                            <option value="unskilled">Unskilled (मजदुर)</option>
+                          </select>
+                        </td>
+                        <td className="py-2.5 px-2 text-center">
+                          <input
+                            type="number"
+                            step="any"
+                            value={r.quantity}
+                            onChange={(e) => updateRow(i, 'quantity', e.target.value)}
+                            className="w-16 px-2 py-1.5 border border-slate-200 rounded-lg text-xs font-mono text-center"
+                          />
+                        </td>
+                        <td className="py-2.5 px-2 text-center">
+                          <select
+                            value={r.days_fraction}
+                            onChange={(e) => updateRow(i, 'days_fraction', e.target.value)}
+                            className="px-2 py-1.5 border border-slate-200 rounded-lg text-xs bg-white"
+                          >
+                            <option value="1">Full Day (1.0)</option>
+                            <option value="0.5">Half Day (0.5)</option>
+                            <option value="1.5">Full + OT (1.5)</option>
+                          </select>
+                        </td>
+                        <td className="py-2.5 px-2 text-right">
+                          <input
+                            type="number"
+                            step="any"
+                            value={r.daily_rate}
+                            onChange={(e) => updateRow(i, 'daily_rate', e.target.value)}
+                            className="w-24 px-2 py-1.5 border border-slate-200 rounded-lg text-xs font-mono text-right font-bold text-slate-800"
+                          />
+                        </td>
+                        <td className="py-2.5 px-2 text-right font-mono font-black text-slate-900">
+                          {formatNPR(lineTotal)}
+                        </td>
+                        <td className="py-2.5 px-2 text-center">
+                          <button
+                            type="button"
+                            onClick={() => removeRow(i)}
+                            className="p-1 rounded text-slate-400 hover:text-red-600 transition"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
               </tbody>
             </table>
           </div>

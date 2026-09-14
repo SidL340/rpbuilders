@@ -134,6 +134,13 @@ function initializeAndMigrateSchema() {
         LEFT JOIN users u ON v.entered_by = u.id
         LEFT JOIN users ap ON v.approved_by = ap.id;
       `);
+      // Auto-migrate missing columns in company_settings table
+      const companyCols = db.prepare("PRAGMA table_info(company_settings)").all().map(c => c.name);
+      if (!companyCols.includes('company_logo_data')) {
+        console.log('Migrating: Adding column company_logo_data to company_settings table...');
+        db.exec('ALTER TABLE company_settings ADD COLUMN company_logo_data TEXT');
+      }
+
       // Record and verify schema_migrations
       db.exec(`
         CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -153,6 +160,7 @@ function initializeAndMigrateSchema() {
       recordMigration('v1.0.0', 'Initial construction accounting schema with SQLite WAL');
       recordMigration('v1.0.1', 'Aarthik Barsha (Fiscal Year) and payment audit details');
       recordMigration('v1.0.2', 'Automated weekly backup and developer update engine');
+      recordMigration('v1.0.3', 'System logo upload, Site & Voucher edit-delete management, and General Journal report');
     }
   } catch (err) {
     console.error('❌ Schema migration error:', err.message);

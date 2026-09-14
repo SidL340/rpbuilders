@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Receipt, PlusCircle, Search, Filter, Eye, CheckCircle2,
-  XCircle, Printer, Download
+  XCircle, Printer, Download, Edit3, Trash2
 } from 'lucide-react';
-import { vouchersAPI, projectsAPI, partiesAPI } from '../../services/api';
+import { vouchersAPI, projectsAPI, partiesAPI, categoriesAPI, accountsAPI } from '../../services/api';
 import { formatNPR } from '../../utils/helpers';
+import { useCompany } from '../../contexts/CompanyContext';
 import Loader from '../../components/ui/Loader';
 import SearchInput from '../../components/ui/SearchInput';
 import Pagination from '../../components/ui/Pagination';
@@ -13,6 +14,7 @@ import Modal from '../../components/ui/Modal';
 import toast from 'react-hot-toast';
 
 export default function VoucherList() {
+  const { company } = useCompany();
   const [vouchers, setVouchers] = useState([]);
   const [pagination, setPagination] = useState({ page: 1, totalPages: 1 });
   const [loading, setLoading] = useState(true);
@@ -26,10 +28,23 @@ export default function VoucherList() {
   const [toDateBs, setToDateBs] = useState('');
 
   const [projects, setProjects] = useState([]);
+  const [parties, setParties] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [accounts, setAccounts] = useState([]);
   const [selectedVoucher, setSelectedVoucher] = useState(null);
 
+  // Edit Voucher Modal
+  const [editingVoucher, setEditingVoucher] = useState(null);
+  const [editForm, setEditForm] = useState(null);
+  const [savingEdit, setSavingEdit] = useState(false);
+
   useEffect(() => {
-    projectsAPI.getAll().then(res => setProjects(res.data.data || [])).catch(() => {});
+    Promise.all([
+      projectsAPI.getAll().then(res => setProjects(res.data.data || [])).catch(() => {}),
+      partiesAPI.getAll().then(res => setParties(res.data.data || [])).catch(() => {}),
+      categoriesAPI.getAll().then(res => setCategories(res.data.data || [])).catch(() => {}),
+      accountsAPI.getAll().then(res => setAccounts(res.data.data || [])).catch(() => {})
+    ]);
   }, []);
 
   const loadVouchers = async (page = 1) => {
@@ -70,6 +85,72 @@ export default function VoucherList() {
       }
     } catch (err) {
       toast.error(err?.response?.data?.message || 'Failed to approve voucher');
+    }
+  };
+
+  const handleOpenEdit = (v) => {
+    setEditingVoucher(v);
+    setEditForm({
+      voucher_type: v.voucher_type || 'payment',
+      voucher_date_bs: v.voucher_date_bs || '',
+      project_id: v.project_id ? String(v.project_id) : '',
+      party_id: v.party_id ? String(v.party_id) : '',
+      account_id: v.account_id ? String(v.account_id) : '',
+      category_id: v.category_id ? String(v.category_id) : '',
+      narration: v.narration || '',
+      gross_amount: String(v.gross_amount || ''),
+      tds_percent: String(v.tds_percent || '0'),
+      payment_mode: v.payment_mode || 'cash',
+      cheque_no: v.cheque_no || '',
+      bank_name: v.bank_name || '',
+      cash_receiver_name: v.cash_receiver_name || '',
+      cash_receiver_phone: v.cash_receiver_phone || '',
+      reference_no: v.reference_no || '',
+      bill_no: v.bill_no || '',
+      remarks: v.remarks || '',
+      status: v.status || 'draft'
+    });
+  };
+
+  const handleSaveEdit = async (e) => {
+    e.preventDefault();
+    if (!editForm.gross_amount || parseFloat(editForm.gross_amount) <= 0) {
+      return toast.error('Valid gross amount is required');
+    }
+
+    try {
+      setSavingEdit(true);
+      const res = await vouchersAPI.update(editingVoucher.id, {
+        ...editForm,
+        gross_amount: parseFloat(editForm.gross_amount),
+        tds_percent: parseFloat(editForm.tds_percent) || 0,
+      });
+
+      if (res.data.success) {
+        toast.success(`भौचर "${editingVoucher.voucher_no}" सफलतापूर्वक सम्पादन गरियो!`);
+        setEditingVoucher(null);
+        loadVouchers(pagination.page);
+      }
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to update voucher');
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
+  const handleDeleteVoucher = async (v) => {
+    if (!window.confirm(`के तपाईं भौचर नं. ${v.voucher_no} (${formatNPR(v.net_amount)}) मेटाउन निश्चित हुनुहुन्छ? यो भौचर मेटाइएपछि खाता ब्यालेन्स स्वतः मिलान हुनेछ।`)) {
+      return;
+    }
+
+    try {
+      const res = await vouchersAPI.delete(v.id);
+      if (res.data.success) {
+        toast.success(res.data.message);
+        loadVouchers(pagination.page);
+      }
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to delete voucher');
     }
   };
 
@@ -211,11 +292,25 @@ export default function VoucherList() {
                             <CheckCircle2 className="w-4 h-4" />
                           </button>
                         )}
+                        <button
+                          onClick={() => handleOpenEdit(v)}
+                          title="सम्पादन गर्नुहोस् (Edit Voucher)"
+                          className="p-1 rounded text-amber-600 hover:bg-amber-50"
+                        >
+                          <Edit3 className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteVoucher(v)}
+                          title="मेटाउनुहोस् (Delete Voucher)"
+                          className="p-1 rounded text-red-600 hover:bg-red-50"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                         {v.status !== 'cancelled' && (
                           <button
                             onClick={() => handleCancel(v.id)}
                             title="Cancel"
-                            className="p-1 rounded text-red-500 hover:bg-red-50"
+                            className="p-1 rounded text-slate-400 hover:text-slate-600 hover:bg-slate-100"
                           >
                             <XCircle className="w-4 h-4" />
                           </button>
@@ -254,8 +349,15 @@ export default function VoucherList() {
         >
           <div className="space-y-4 text-xs font-sans">
             <div className="text-center pb-3 border-b border-slate-200">
-              <h3 className="text-base font-black text-slate-900">R.P. BUILDERS PVT. LTD.</h3>
-              <p className="text-[10px] text-slate-500">Official Accounting Voucher</p>
+              {company?.company_logo_data ? (
+                <img
+                  src={company.company_logo_data}
+                  alt="Logo"
+                  className="h-10 max-w-[150px] object-contain mx-auto mb-1.5"
+                />
+              ) : null}
+              <h3 className="text-base font-black text-slate-900">{company?.company_name || 'R.P. BUILDERS PVT. LTD.'}</h3>
+              <p className="text-[10px] text-slate-500">{company?.address || 'Nepal'} • Official Accounting Voucher</p>
             </div>
 
             <div className="grid grid-cols-2 gap-2 text-[11px]">
@@ -292,6 +394,232 @@ export default function VoucherList() {
               </button>
             </div>
           </div>
+        </Modal>
+      )}
+
+      {/* Edit Voucher Modal */}
+      {editingVoucher && editForm && (
+        <Modal
+          isOpen={!!editingVoucher}
+          onClose={() => setEditingVoucher(null)}
+          title={`भौचर सम्पादन (Edit Voucher) — ${editingVoucher.voucher_no}`}
+          size="lg"
+        >
+          <form onSubmit={handleSaveEdit} className="space-y-4 text-xs">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">भौचर प्रकार (Type) *</label>
+                <select
+                  value={editForm.voucher_type}
+                  onChange={(e) => setEditForm({ ...editForm, voucher_type: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white font-bold capitalize"
+                >
+                  <option value="payment">खर्च भुक्तानी (Payment)</option>
+                  <option value="receipt">रकम प्राप्ति (Receipt)</option>
+                  <option value="journal">जर्नल भौचर (Journal)</option>
+                  <option value="contra">कन्ट्रा (Contra)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">मिति (Date BS YYYY-MM-DD) *</label>
+                <input
+                  type="text"
+                  required
+                  value={editForm.voucher_date_bs}
+                  onChange={(e) => setEditForm({ ...editForm, voucher_date_bs: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">स्थिति (Status)</label>
+                <select
+                  value={editForm.status}
+                  onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white font-bold capitalize"
+                >
+                  <option value="approved">Approved (स्वीकृत)</option>
+                  <option value="draft">Draft (पेन्डिङ)</option>
+                  <option value="cancelled">Cancelled (रद्द)</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">साइट / आयोजना (Project Site)</label>
+                <select
+                  value={editForm.project_id}
+                  onChange={(e) => setEditForm({ ...editForm, project_id: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white"
+                >
+                  <option value="">-- कार्यालय / General Office --</option>
+                  {projects.map((p) => (
+                    <option key={p.id} value={p.id}>{p.project_name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">पार्टी / सप्लायर्स (Party)</label>
+                <select
+                  value={editForm.party_id}
+                  onChange={(e) => setEditForm({ ...editForm, party_id: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white"
+                >
+                  <option value="">-- सिधै भुक्तानी (Direct / Cash) --</option>
+                  {parties.map((pr) => (
+                    <option key={pr.id} value={pr.id}>{pr.party_name} ({pr.party_type})</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">खर्च शीर्षक (Category)</label>
+                <select
+                  value={editForm.category_id}
+                  onChange={(e) => setEditForm({ ...editForm, category_id: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white"
+                >
+                  <option value="">-- शीर्षक छान्नुहोस् --</option>
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.id}>{c.category_name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">कम्पनी खाता (Bank / Cash Account) *</label>
+                <select
+                  required
+                  value={editForm.account_id}
+                  onChange={(e) => setEditForm({ ...editForm, account_id: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white font-medium"
+                >
+                  {accounts.map((a) => (
+                    <option key={a.id} value={a.id}>{a.account_name} ({formatNPR(a.current_balance)})</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">कुल रकम (Gross NPR) *</label>
+                <input
+                  type="number"
+                  step="any"
+                  required
+                  value={editForm.gross_amount}
+                  onChange={(e) => setEditForm({ ...editForm, gross_amount: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl font-mono font-bold text-slate-900"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">TDS कट्टी %</label>
+                <input
+                  type="number"
+                  step="any"
+                  value={editForm.tds_percent}
+                  onChange={(e) => setEditForm({ ...editForm, tds_percent: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">भुक्तानी माध्यम (Mode)</label>
+                <select
+                  value={editForm.payment_mode}
+                  onChange={(e) => setEditForm({ ...editForm, payment_mode: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white capitalize font-medium"
+                >
+                  <option value="cash">नगद (Cash)</option>
+                  <option value="cheque">चेक (Cheque)</option>
+                  <option value="bank_transfer">बैंक ट्रान्सफर (Bank Transfer)</option>
+                  <option value="online">अनलाइन (Online)</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Mode details */}
+            {editForm.payment_mode === 'cash' ? (
+              <div className="p-3 bg-amber-50/60 border border-amber-200 rounded-xl grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-amber-900 mb-1">नगद बुझ्ने व्यक्तिको नाम</label>
+                  <input
+                    type="text"
+                    value={editForm.cash_receiver_name}
+                    onChange={(e) => setEditForm({ ...editForm, cash_receiver_name: e.target.value })}
+                    placeholder="e.g. राम प्रसाद दाहाल"
+                    className="w-full px-3 py-1.5 border border-amber-200 rounded-lg bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-amber-900 mb-1">सम्पर्क फोन नं.</label>
+                  <input
+                    type="text"
+                    value={editForm.cash_receiver_phone}
+                    onChange={(e) => setEditForm({ ...editForm, cash_receiver_phone: e.target.value })}
+                    className="w-full px-3 py-1.5 border border-amber-200 rounded-lg bg-white font-mono"
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="p-3 bg-blue-50/60 border border-blue-200 rounded-xl grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-blue-900 mb-1">बैंकको नाम</label>
+                  <input
+                    type="text"
+                    value={editForm.bank_name}
+                    onChange={(e) => setEditForm({ ...editForm, bank_name: e.target.value })}
+                    placeholder="e.g. Nabil Bank"
+                    className="w-full px-3 py-1.5 border border-blue-200 rounded-lg bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-blue-900 mb-1">चेक नं. / Voucher Ref</label>
+                  <input
+                    type="text"
+                    value={editForm.cheque_no}
+                    onChange={(e) => setEditForm({ ...editForm, cheque_no: e.target.value })}
+                    className="w-full px-3 py-1.5 border border-blue-200 rounded-lg bg-white font-mono"
+                  />
+                </div>
+              </div>
+            )}
+
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">कारोबार विवरण (Narration) *</label>
+              <textarea
+                required
+                rows={2}
+                value={editForm.narration}
+                onChange={(e) => setEditForm({ ...editForm, narration: e.target.value })}
+                className="w-full px-3 py-2 border border-slate-200 rounded-xl"
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setEditingVoucher(null)}
+                className="px-4 py-2 border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-100 font-bold"
+              >
+                रद्द गर्नुहोस् (Cancel)
+              </button>
+              <button
+                type="submit"
+                disabled={savingEdit}
+                className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-sm"
+              >
+                {savingEdit ? 'सुरक्षित गर्दै...' : 'परिवर्तन सुरक्षित गर्नुहोस् (Save Changes)'}
+              </button>
+            </div>
+          </form>
         </Modal>
       )}
     </div>

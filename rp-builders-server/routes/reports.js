@@ -213,4 +213,147 @@ router.get('/trial-balance', authenticate, async (req, res) => {
   }
 });
 
+// GET /api/reports/journal - General Journal (जर्नल भौचर किताब / रोजनामचा खाता)
+router.get('/journal', authenticate, async (req, res) => {
+  try {
+    const { from_date_bs, to_date_bs, fiscal_year, project_id, type } = req.query;
+    let query = `SELECT * FROM v_voucher_summary WHERE 1=1`;
+    const params = [];
+
+    if (fiscal_year) { query += ` AND fiscal_year = ?`; params.push(fiscal_year); }
+    if (from_date_bs) { query += ` AND voucher_date_bs >= ?`; params.push(from_date_bs); }
+    if (to_date_bs) { query += ` AND voucher_date_bs <= ?`; params.push(to_date_bs); }
+    if (project_id) { query += ` AND project_id = ?`; params.push(project_id); }
+    if (type) { query += ` AND voucher_type = ?`; params.push(type); }
+
+    query += ` ORDER BY voucher_date_bs ASC, id ASC`;
+    const [rows] = await pool.query(query, params);
+
+    let grandDebit = 0;
+    let grandCredit = 0;
+
+    const journalEntries = rows.map((v) => {
+      const gross = parseFloat(v.gross_amount) || parseFloat(v.net_amount) || 0;
+      const tds = parseFloat(v.tds_amount) || 0;
+      const net = parseFloat(v.net_amount) || (gross - tds);
+
+      const lines = [];
+
+      if (v.voucher_type === 'payment') {
+        // Debit Expense/Party
+        const debitTitle = v.category_name 
+          ? `Dr. ${v.category_name} A/c`
+          : v.party_name 
+          ? `Dr. ${v.party_name} A/c`
+          : 'Dr. Construction Site Expense A/c';
+
+        lines.push({
+          particulars: debitTitle,
+          sub_text: v.party_name && v.category_name ? `Party: ${v.party_name}` : null,
+          lf: v.project_code || 'RP-HO',
+          debit: gross,
+          credit: 0
+        });
+
+        // If TDS
+        if (tds > 0) {
+          lines.push({
+            particulars: `  To TDS Withholding Tax Payable (${v.tds_percent}%)`,
+            sub_text: 'Tax Deduction at Source',
+            lf: 'TDS-2083',
+            debit: 0,
+            credit: tds
+          });
+        }
+
+        // Credit Cash / Bank
+        const creditAccount = v.paid_from 
+          ? `  To ${v.paid_from}` 
+          : v.payment_mode === 'cash' 
+          ? '  To Cash In Hand A/c' 
+          : `  To ${v.bank_name || 'Bank'} A/c`;
+
+        lines.push({
+          particulars: creditAccount,
+          sub_text: v.payment_mode === 'cash' && v.cash_receiver_name 
+            ? `Paid to: ${v.cash_receiver_name}` 
+            : v.payment_mode !== 'cash' && v.cheque_no 
+            ? `Cheque No: ${v.cheque_no}` 
+            : null,
+          lf: 'ACC-01',
+          debit: 0,
+          credit: net
+        });
+
+        grandDebit += gross;
+        grandCredit += (tds + net);
+      } else {
+        // Receipt Voucher
+        const debitAccount = v.paid_from 
+          ? `Dr. ${v.paid_from}` 
+          : v.payment_mode === 'cash' 
+          ? 'Dr. Cash In Hand A/c' 
+          : `Dr. ${v.bank_name || 'Bank'} A/c`;
+
+        lines.push({
+          particulars: debitAccount,
+          sub_text: v.payment_mode === 'cash' ? 'Cash Received' : `Bank Deposit: ${v.bank_voucher_no || 'Direct'}`,
+          lf: 'ACC-01',
+          debit: net,
+          credit: 0
+        });
+
+        const creditTitle = v.party_name 
+          ? `  To ${v.party_name} (Client / Party) A/c`
+          : v.category_name 
+          ? `  To ${v.category_name} A/c`
+          : '  To Project Revenue A/c';
+
+        lines.push({
+          particulars: creditTitle,
+          sub_text: v.project_name ? `Site: ${v.project_name}` : null,
+          lf: v.project_code || 'RP-HO',
+          debit: 0,
+          credit: net
+        });
+
+        grandDebit += net;
+        grandCredit += net;
+      }
+
+      return {
+        id: v.id,
+        voucher_no: v.voucher_no,
+        voucher_type: v.voucher_type,
+        voucher_date_bs: v.voucher_date_bs,
+        voucher_date_ad: v.voucher_date_ad,
+        fiscal_year: v.fiscal_year,
+        project_name: v.project_name,
+        project_code: v.project_code,
+        party_name: v.party_name,
+        narration: v.narration,
+        bill_no: v.bill_no,
+        payment_mode: v.payment_mode,
+        lines,
+        total_voucher_amount: gross
+      };
+    });
+
+    res.json({
+      success: true,
+      data: {
+        entries: journalEntries,
+        summary: {
+          totalDebit: Math.round(grandDebit * 100) / 100,
+          totalCredit: Math.round(grandCredit * 100) / 100,
+          count: journalEntries.length,
+          isBalanced: Math.abs(grandDebit - grandCredit) < 0.05
+        }
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 module.exports = router;

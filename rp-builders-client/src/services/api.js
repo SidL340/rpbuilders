@@ -49,6 +49,7 @@ export const projectsAPI = {
   create:      (data)   => api.post('/projects', data),
   getById:     (id)     => api.get(`/projects/${id}`),
   update:      (id, d)  => api.put(`/projects/${id}`, d),
+  delete:      (id, force) => api.delete(`/projects/${id}${force ? '?force=true' : ''}`),
   getSummary:  (id)     => api.get(`/projects/${id}/summary`),
   getExpenses: (id, p)  => api.get(`/projects/${id}/expenses`, { params: p }),
   getLedger:   (id, p)  => api.get(`/projects/${id}/ledger`, { params: p }),
@@ -75,6 +76,8 @@ export const vouchersAPI = {
   getAll:   (params) => api.get('/vouchers', { params }),
   create:   (data)   => api.post('/vouchers', data),
   getById:  (id)     => api.get(`/vouchers/${id}`),
+  update:   (id, d)  => api.put(`/vouchers/${id}`, d),
+  delete:   (id)     => api.delete(`/vouchers/${id}`),
   approve:  (id)     => api.put(`/vouchers/${id}/approve`),
   cancel:   (id)     => api.put(`/vouchers/${id}/cancel`),
   daybook:  (params) => api.get('/vouchers/daybook', { params }),
@@ -137,6 +140,7 @@ export const equipmentAPI = {
 // ─── Reports ───────────────────────────────────────────
 export const reportsAPI = {
   daybook:        (params) => api.get('/reports/daybook', { params }),
+  journal:        (params) => api.get('/reports/journal', { params }),
   partyLedger:    (id, p)  => api.get(`/reports/ledger/party/${id}`, { params: p }),
   projectLedger:  (id)     => api.get(`/reports/ledger/project/${id}`),
   expenseSummary: (params) => api.get('/reports/expense-summary', { params }),

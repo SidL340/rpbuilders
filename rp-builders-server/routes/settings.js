@@ -17,15 +17,24 @@ router.get('/company', authenticate, async (req, res) => {
 // PUT /api/settings/company
 router.put('/company', authenticate, authorize('super_admin'), async (req, res) => {
   try {
-    const { company_name, company_name_np, company_address, company_phone, company_email, company_pan, fiscal_year_start, currency, date_format } = req.body;
+    const {
+      company_name, company_name_np, company_address, company_phone,
+      company_email, company_pan, fiscal_year_start, currency,
+      date_format, company_logo_data
+    } = req.body;
     
     await pool.query(
       `UPDATE company_settings SET
         company_name = ?, company_name_np = ?, company_address = ?,
         company_phone = ?, company_email = ?, company_pan = ?,
-        fiscal_year_start = ?, currency = ?, date_format = ?
+        fiscal_year_start = ?, currency = ?, date_format = ?,
+        company_logo_data = CASE WHEN ? IS NOT NULL THEN ? ELSE company_logo_data END
        WHERE id = 1`,
-      [company_name, company_name_np, company_address, company_phone, company_email, company_pan, fiscal_year_start, currency || 'NPR', date_format || 'BS']
+      [
+        company_name, company_name_np, company_address, company_phone,
+        company_email, company_pan, fiscal_year_start, currency || 'NPR',
+        date_format || 'BS', company_logo_data, company_logo_data
+      ]
     );
 
     res.json({ success: true, message: 'Settings updated successfully' });

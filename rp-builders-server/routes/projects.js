@@ -160,6 +160,45 @@ router.put('/:id', authenticate, async (req, res) => {
   }
 });
 
+// DELETE /api/projects/:id - delete a project site
+router.delete('/:id', authenticate, async (req, res) => {
+  try {
+    const projectId = req.params.id;
+
+    // Check if project exists
+    const [projects] = await pool.query('SELECT * FROM projects WHERE id = ?', [projectId]);
+    if (!projects.length) {
+      return res.status(404).json({ success: false, message: 'Project site not found' });
+    }
+
+    // Check if vouchers exist for this project
+    const [voucherCount] = await pool.query('SELECT COUNT(*) as count FROM vouchers WHERE project_id = ?', [projectId]);
+    const cnt = voucherCount[0]?.count || 0;
+
+    if (cnt > 0 && req.query.force !== 'true') {
+      return res.status(400).json({
+        success: false,
+        hasVouchers: true,
+        voucherCount: cnt,
+        message: `यस साइटमा ${cnt} वटा भौचर कारोबारहरु रेकर्ड छन्। साइट मेटाउन पहिले ति भौचरहरु मेटाउनुहोस् वा पुष्टि गर्नुहोस्।`
+      });
+    }
+
+    // If force delete is requested, unlink vouchers to prevent orphaned FK constraint
+    if (cnt > 0 && req.query.force === 'true') {
+      await pool.query('UPDATE vouchers SET project_id = NULL WHERE project_id = ?', [projectId]);
+    }
+
+    // Also unlink or remove any work orders
+    await pool.query('UPDATE thekedar_work_orders SET project_id = NULL WHERE project_id = ?', [projectId]).catch(() => {});
+
+    await pool.query('DELETE FROM projects WHERE id = ?', [projectId]);
+    res.json({ success: true, message: 'Project site deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 // GET /api/projects/:id/summary
 router.get('/:id/summary', authenticate, async (req, res) => {
   try {

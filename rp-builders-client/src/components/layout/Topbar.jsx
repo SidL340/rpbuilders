@@ -1,11 +1,13 @@
 import React from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useCompany } from '../../contexts/CompanyContext';
 import { todayBS, formatBSDate, getFiscalYear } from '../../utils/nepaliDate';
 import { Calendar, LogOut, User, Menu, PlusCircle, BookmarkCheck } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export default function Topbar({ onToggleSidebar }) {
   const { user, logout } = useAuth();
+  const { company } = useCompany();
   const bsToday = todayBS();
   const currentFY = getFiscalYear(bsToday);
 
@@ -19,6 +21,14 @@ export default function Topbar({ onToggleSidebar }) {
         >
           <Menu className="w-5 h-5" />
         </button>
+
+        {company?.company_logo_data && (
+          <img
+            src={company.company_logo_data}
+            alt="Logo"
+            className="w-8 h-8 rounded-lg object-contain bg-slate-50 border border-slate-200 p-0.5 lg:hidden"
+          />
+        )}
 
         {/* Live Nepali Date Badge */}
         <div className="flex items-center gap-2 text-xs font-semibold text-slate-600 bg-slate-50 border border-slate-200/80 px-3 py-1.5 rounded-xl">

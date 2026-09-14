@@ -17,10 +17,12 @@ import {
 import { partiesAPI } from '../../services/api';
 import { todayBS, formatBSDate, getFiscalYearList, getFiscalYear } from '../../utils/nepaliDate';
 import { formatNPR } from '../../utils/helpers';
+import { useCompany } from '../../contexts/CompanyContext';
 import Loader from '../../components/ui/Loader';
 import toast from 'react-hot-toast';
 
 export default function PartyLedger() {
+  const { company } = useCompany();
   const { id } = useParams();
   const [party, setParty] = useState(null);
   const [transactions, setTransactions] = useState([]);
@@ -157,10 +159,21 @@ export default function PartyLedger() {
 
       {/* Printable Report Header */}
       <div className="hidden print:block text-center border-b-2 border-slate-800 pb-4 mb-4">
-        <h2 className="text-2xl font-black uppercase text-slate-900 tracking-tight">
-          R.P. BUILDERS PVT. LTD.
+        {company?.company_logo_data ? (
+          <img
+            src={company.company_logo_data}
+            alt={company?.company_name || 'Logo'}
+            className="h-16 max-w-[200px] object-contain mx-auto mb-2"
+          />
+        ) : (
+          <h2 className="text-2xl font-black uppercase text-slate-900 tracking-tight">
+            {company?.company_name || 'R.P. BUILDERS PVT. LTD.'}
+          </h2>
+        )}
+        <h2 className="text-xl font-black uppercase text-slate-900 tracking-tight">
+          {company?.company_name || 'R.P. BUILDERS PVT. LTD.'}
         </h2>
-        <p className="text-xs text-slate-600">Nepal • Construction Accounting Portal</p>
+        <p className="text-xs text-slate-600">{company?.address || 'Nepal'} • Construction Accounting Portal • PAN: {company?.pan_no || '600123456'}</p>
         <h3 className="text-lg font-bold mt-2 underline">
           पार्टी लेजर खाता (PARTY ACCOUNT STATEMENT): {party.party_name}
         </h3>

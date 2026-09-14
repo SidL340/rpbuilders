@@ -12,7 +12,9 @@ import {
   Calendar,
   Percent,
   CheckCircle,
-  Clock
+  Clock,
+  Edit3,
+  Trash2
 } from 'lucide-react';
 import { projectsAPI } from '../../services/api';
 import { formatNPR } from '../../utils/helpers';
@@ -31,6 +33,7 @@ export default function Projects() {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [editingProject, setEditingProject] = useState(null);
 
   const [form, setForm] = useState({
     project_name: '',
@@ -74,7 +77,51 @@ export default function Projects() {
     loadProjects();
   }, []);
 
-  const handleCreate = async (e) => {
+  const handleEditOpen = (project) => {
+    setEditingProject(project);
+    setForm({
+      project_name: project.project_name || '',
+      project_name_np: project.project_name_np || '',
+      project_type: project.project_type || 'solo',
+      partner_company_name: project.partner_company_name || '',
+      rp_share_percent: String(project.rp_share_percent || 60),
+      partner_share_percent: String(project.partner_share_percent || 40),
+      main_client_name: project.main_client_name || '',
+      main_client_phone: project.main_client_phone || '',
+      site_address: project.site_address || '',
+      site_district: project.site_district || 'Kathmandu',
+      contract_value: project.contract_value ? String(project.contract_value) : '',
+      budget_total: project.budget_total ? String(project.budget_total) : '',
+      start_date_bs: project.start_date_bs || todayBS(),
+      status: project.status || 'active',
+      description: project.description || '',
+    });
+    setIsModalOpen(true);
+  };
+
+  const handleCreateOpen = () => {
+    setEditingProject(null);
+    setForm({
+      project_name: '',
+      project_name_np: '',
+      project_type: activeTab === 'joint_venture' ? 'joint_venture' : 'solo',
+      partner_company_name: '',
+      rp_share_percent: '60',
+      partner_share_percent: '40',
+      main_client_name: '',
+      main_client_phone: '',
+      site_address: '',
+      site_district: 'Kathmandu',
+      contract_value: '',
+      budget_total: '',
+      start_date_bs: todayBS(),
+      status: 'active',
+      description: '',
+    });
+    setIsModalOpen(true);
+  };
+
+  const handleSave = async (e) => {
     e.preventDefault();
     if (!form.project_name) {
       return toast.error('Project Name is required');
@@ -90,33 +137,59 @@ export default function Projects() {
         partner_share_percent: form.project_type === 'joint_venture' ? parseFloat(form.partner_share_percent) || 50 : 0,
       };
 
-      const res = await projectsAPI.create(payload);
+      if (editingProject) {
+        const res = await projectsAPI.update(editingProject.id, payload);
+        if (res.data.success) {
+          toast.success(`Site "${form.project_name}" updated successfully!`);
+          setIsModalOpen(false);
+          setEditingProject(null);
+          loadProjects();
+        }
+      } else {
+        const res = await projectsAPI.create(payload);
+        if (res.data.success) {
+          toast.success(`Site "${form.project_name}" created successfully!`);
+          setIsModalOpen(false);
+          loadProjects();
+        }
+      }
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to save project site');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDeleteProject = async (project) => {
+    if (!window.confirm(`के तपाईं "${project.project_name}" (${project.project_code}) साइट हटाउन निश्चित हुनुहुन्छ?`)) {
+      return;
+    }
+
+    try {
+      const res = await projectsAPI.delete(project.id);
       if (res.data.success) {
-        toast.success(`Site "${form.project_name}" created successfully!`);
-        setIsModalOpen(false);
-        setForm({
-          project_name: '',
-          project_name_np: '',
-          project_type: 'solo',
-          partner_company_name: '',
-          rp_share_percent: '60',
-          partner_share_percent: '40',
-          main_client_name: '',
-          main_client_phone: '',
-          site_address: '',
-          site_district: 'Kathmandu',
-          contract_value: '',
-          budget_total: '',
-          start_date_bs: todayBS(),
-          status: 'active',
-          description: '',
-        });
+        toast.success(`Site "${project.project_name}" deleted successfully!`);
         loadProjects();
       }
     } catch (err) {
-      toast.error(err?.response?.data?.message || 'Failed to create project');
-    } finally {
-      setSubmitting(false);
+      if (err?.response?.data?.hasVouchers) {
+        const confirmForce = window.confirm(
+          `यस साइटमा ${err.response.data.voucherCount} वटा भौचर कारोबार जोडिएका छन्।\n\nके तपाईं ती भौचरहरु अन-लिंक गरी साइट पूर्ण रुपमा मेटाउन निश्चित हुनुहुन्छ?`
+        );
+        if (confirmForce) {
+          try {
+            const forceRes = await projectsAPI.delete(project.id, true);
+            if (forceRes.data.success) {
+              toast.success(`Site "${project.project_name}" deleted successfully!`);
+              loadProjects();
+            }
+          } catch (forceErr) {
+            toast.error(forceErr?.response?.data?.message || 'Failed to force delete site');
+          }
+        }
+      } else {
+        toast.error(err?.response?.data?.message || 'Failed to delete site');
+      }
     }
   };
 
@@ -155,13 +228,7 @@ export default function Projects() {
         </div>
 
         <button
-          onClick={() => {
-            setForm(prev => ({
-              ...prev,
-              project_type: activeTab === 'joint_venture' ? 'joint_venture' : 'solo'
-            }));
-            setIsModalOpen(true);
-          }}
+          onClick={handleCreateOpen}
           className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-md shadow-blue-600/25 transition cursor-pointer"
         >
           <Plus className="w-4 h-4" />
@@ -312,19 +379,37 @@ export default function Projects() {
                   </div>
                 </div>
 
-                {/* Footer Link */}
-                <div className="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
-                  <span className="text-[11px] text-slate-400 font-medium font-mono">
+                {/* Footer Actions */}
+                <div className="p-3.5 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
+                  <span className="text-[10px] text-slate-400 font-medium font-mono">
                     Start: {project.start_date_bs} BS
                   </span>
 
-                  <Link
-                    to={`/projects/${project.id}`}
-                    className="inline-flex items-center gap-1.5 text-xs font-black text-blue-600 hover:text-blue-800 transition"
-                  >
-                    <span>पुरा विवरण हेर्नुहोस् (Details)</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </Link>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => handleEditOpen(project)}
+                      title="साइट सम्पादन गर्नुहोस् (Edit Site)"
+                      className="p-1.5 rounded-lg text-slate-500 hover:text-blue-700 hover:bg-blue-50 transition cursor-pointer"
+                    >
+                      <Edit3 className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteProject(project)}
+                      title="साइट मेटाउनुहोस् (Delete Site)"
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition cursor-pointer"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                    <Link
+                      to={`/projects/${project.id}`}
+                      className="inline-flex items-center gap-1 text-xs font-black text-blue-600 hover:text-blue-800 transition ml-1"
+                    >
+                      <span>विवरण (Details)</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </Link>
+                  </div>
                 </div>
               </div>
             );
@@ -338,14 +423,17 @@ export default function Projects() {
         </div>
       )}
 
-      {/* New Project Modal */}
+      {/* Project Create / Edit Modal */}
       <Modal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        title="नयाँ निर्माण साइट / आयोजना सिर्जना गर्नुहोस्"
+        onClose={() => {
+          setIsModalOpen(false);
+          setEditingProject(null);
+        }}
+        title={editingProject ? `साइट सम्पादन: ${editingProject.project_name}` : "नयाँ निर्माण साइट / आयोजना सिर्जना गर्नुहोस्"}
         size="lg"
       >
-        <form onSubmit={handleCreate} className="space-y-4 text-xs">
+        <form onSubmit={handleSave} className="space-y-4 text-xs">
           {/* Project Type Radio */}
           <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200">
             <label className="block font-black text-slate-800 uppercase tracking-wide mb-2 text-[11px]">
@@ -554,17 +642,20 @@ export default function Projects() {
           <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
             <button
               type="button"
-              onClick={() => setIsModalOpen(false)}
+              onClick={() => {
+                setIsModalOpen(false);
+                setEditingProject(null);
+              }}
               className="px-4 py-2 border border-slate-200 rounded-xl font-semibold text-slate-600"
             >
-              Cancel
+              रद्द गर्नुहोस् (Cancel)
             </button>
             <button
               type="submit"
               disabled={submitting}
               className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-md transition cursor-pointer"
             >
-              {submitting ? 'Creating Site...' : 'Save Construction Site'}
+              {submitting ? 'सुरक्षित हुँदैछ...' : editingProject ? 'साइट अपडेट गर्नुहोस् (Update Site)' : 'नयाँ साइट सुरक्षित गर्नुहोस् (Save Site)'}
             </button>
           </div>
         </form>
