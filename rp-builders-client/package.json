@@ -1,0 +1,85 @@
+{
+  "name": "rp-builders-client",
+  "private": true,
+  "version": "1.0.0",
+  "main": "electron/main.cjs",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "lint": "oxlint",
+    "preview": "vite preview",
+    "electron:dev": "concurrently \"vite\" \"cross-env NODE_ENV=development ELECTRON_START_URL=http://localhost:5173 electron electron/main.cjs\"",
+    "electron:build": "vite build && electron-builder --win --x64"
+  },
+  "build": {
+    "appId": "com.rpbuilders.accounting",
+    "productName": "R.P. Builders ERP",
+    "copyright": "Copyright © 2082 R.P. Builders Pvt. Ltd.",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "../rp-builders-server",
+        "to": "server",
+        "filter": [
+          "**/*",
+          "!data/*.db*",
+          "!dist-server/**"
+        ]
+      }
+    ],
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "SidL340",
+        "repo": "rpbuilders"
+      }
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "R.P. Builders ERP"
+    }
+  },
+  "dependencies": {
+    "@hookform/resolvers": "^5.9.1",
+    "@tailwindcss/vite": "^4.3.3",
+    "autoprefixer": "^10.5.4",
+    "axios": "^1.19.0",
+    "date-fns": "^4.4.0",
+    "lucide-react": "^1.34.0",
+    "postcss": "^8.5.26",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "react-hook-form": "^7.86.0",
+    "react-hot-toast": "^2.6.0",
+    "react-router-dom": "^7.18.2",
+    "recharts": "^3.10.1",
+    "tailwindcss": "^4.3.3",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.4",
+    "@vitejs/plugin-react": "^6.1.0",
+    "concurrently": "^9.2.1",
+    "cross-env": "^10.1.0",
+    "electron": "^40.8.0",
+    "electron-builder": "^26.7.0",
+    "oxlint": "^1.79.0",
+    "vite": "^8.2.2"
+  }
+}

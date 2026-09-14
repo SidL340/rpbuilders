@@ -1,0 +1,29 @@
+# Node dependencies
+**/node_modules/
+
+# Environment files & secrets
+.env
+.env.local
+.env.*.local
+
+# Build outputs
+**/dist/
+**/dist-server/
+rp-builders-client/release/
+FINAL-CLIENT-DELIVERY/*.exe
+
+# SQLite local databases & live data
+rp-builders-server/data/*.db
+rp-builders-server/data/*.db-wal
+rp-builders-server/data/*.db-shm
+rp-builders-server/data/backups/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS Files
+.DS_Store
+Thumbs.db
