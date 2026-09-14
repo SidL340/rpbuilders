@@ -13,28 +13,37 @@ app.commandLine.appendSwitch('disable-gpu-compositing');
 let mainWindow = null;
 let serverProcess = null;
 
-const isDev = process.env.NODE_ENV === 'development';
+const isPackaged = app.isPackaged;
 const PORT = process.env.PORT || 5000;
 const SERVER_URL = `http://127.0.0.1:${PORT}`;
 
 // Check if backend server is responding
-function checkServerReady(timeout = 6000) {
+function checkServerReady(timeout = 10000) {
   const startTime = Date.now();
   return new Promise((resolve) => {
     const check = () => {
-      const req = http.get(`${SERVER_URL}/api/auth/me`, (res) => {
-        resolve(true);
+      const req = http.get(`${SERVER_URL}/api/health`, (res) => {
+        if (res.statusCode >= 200 && res.statusCode < 500) {
+          resolve(true);
+        } else {
+          retry();
+        }
       });
       req.on('error', () => {
-        if (Date.now() - startTime > timeout) {
-          resolve(false);
-        } else {
-          setTimeout(check, 300);
-        }
+        retry();
       });
       req.setTimeout(1000, () => {
         req.abort();
+        retry();
       });
+
+      function retry() {
+        if (Date.now() - startTime > timeout) {
+          resolve(false);
+        } else {
+          setTimeout(check, 250);
+        }
+      }
     };
     check();
   });
@@ -43,9 +52,16 @@ function checkServerReady(timeout = 6000) {
 // Start embedded backend server
 function startBackendServer() {
   try {
-    const serverDir = isDev
-      ? path.join(__dirname, '../../rp-builders-server')
-      : path.join(process.resourcesPath, 'server');
+    let serverDir;
+    if (isPackaged) {
+      serverDir = path.join(process.resourcesPath, 'server');
+    } else {
+      // In development or raw run
+      serverDir = path.join(__dirname, '../../rp-builders-server');
+      if (!fs.existsSync(serverDir)) {
+        serverDir = path.join(__dirname, '../rp-builders-server');
+      }
+    }
 
     const serverScript = path.join(serverDir, 'server.js');
     if (!fs.existsSync(serverScript)) {
@@ -53,9 +69,9 @@ function startBackendServer() {
       return;
     }
 
-    const dataDir = isDev
-      ? path.join(serverDir, 'data')
-      : path.join(app.getPath('userData'), 'data');
+    const dataDir = isPackaged
+      ? path.join(app.getPath('userData'), 'data')
+      : path.join(serverDir, 'data');
 
     const env = {
       ...process.env,
@@ -131,12 +147,11 @@ async function createWindow() {
   });
 
   // Wait for server to start before loading
-  const isServerRunning = await checkServerReady(3000);
+  const isServerRunning = await checkServerReady(8000);
   if (isServerRunning) {
     mainWindow.loadURL(SERVER_URL);
   } else {
-    // If not ready on HTTP, load index.html directly via file://
-    // Since base is './', index.html will load all React bundles flawlessly!
+    // If not ready on HTTP yet, load index.html directly
     const indexPath = path.join(__dirname, '../dist/index.html');
     mainWindow.loadFile(indexPath);
   }

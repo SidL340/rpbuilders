@@ -20,14 +20,16 @@ api.interceptors.request.use(config => {
   return config;
 });
 
-// Handle 401 globally
+// Handle 401 globally without flickering / reload loops
 api.interceptors.response.use(
   res => res,
   err => {
     if (err.response?.status === 401) {
       localStorage.removeItem('rp_token');
       localStorage.removeItem('rp_user');
-      window.location.href = '/login';
+      if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(err);
   }

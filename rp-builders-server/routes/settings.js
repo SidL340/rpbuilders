@@ -4,10 +4,10 @@ const pool = require('../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
 const backupService = require('../services/backupService');
 
-// GET /api/settings/company
-router.get('/company', authenticate, async (req, res) => {
+// GET /api/settings/company (Public for app branding & login page)
+router.get('/company', async (req, res) => {
   try {
-    const [rows] = await pool.query('SELECT * FROM company_settings LIMIT 1');
+    const [rows] = await pool.query('SELECT company_name, company_name_np, company_address, company_phone, company_email, company_pan, company_logo_data FROM company_settings LIMIT 1');
     res.json({ success: true, data: rows[0] || {} });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

@@ -31,6 +31,10 @@
           "!data/*.db*",
           "!dist-server/**"
         ]
+      },
+      {
+        "from": "../rp-builders-server/node_modules",
+        "to": "server/node_modules"
       }
     ],
     "publish": [
