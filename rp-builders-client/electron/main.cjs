@@ -4,11 +4,8 @@ const { spawn } = require('child_process');
 const http = require('http');
 const fs = require('fs');
 
-// Disable hardware acceleration to eliminate Windows GPU rendering flicker
+// Disable hardware acceleration to eliminate Windows GPU rendering flicker without disabling rasterization
 app.disableHardwareAcceleration();
-app.commandLine.appendSwitch('disable-gpu');
-app.commandLine.appendSwitch('disable-software-rasterizer');
-app.commandLine.appendSwitch('disable-gpu-compositing');
 
 let mainWindow = null;
 let serverProcess = null;
@@ -18,7 +15,7 @@ const PORT = process.env.PORT || 5000;
 const SERVER_URL = `http://127.0.0.1:${PORT}`;
 
 // Check if backend server is responding
-function checkServerReady(timeout = 10000) {
+function checkServerReady(timeout = 12000) {
   const startTime = Date.now();
   return new Promise((resolve) => {
     const check = () => {
@@ -56,7 +53,6 @@ function startBackendServer() {
     if (isPackaged) {
       serverDir = path.join(process.resourcesPath, 'server');
     } else {
-      // In development or raw run
       serverDir = path.join(__dirname, '../../rp-builders-server');
       if (!fs.existsSync(serverDir)) {
         serverDir = path.join(__dirname, '../rp-builders-server');
@@ -73,6 +69,18 @@ function startBackendServer() {
       ? path.join(app.getPath('userData'), 'data')
       : path.join(serverDir, 'data');
 
+    if (!fs.existsSync(dataDir)) {
+      fs.mkdirSync(dataDir, { recursive: true });
+    }
+
+    const logFile = path.join(app.getPath('userData'), 'server.log');
+    let logStream;
+    try {
+      logStream = fs.openSync(logFile, 'a');
+    } catch (e) {
+      logStream = 'ignore';
+    }
+
     const env = {
       ...process.env,
       PORT: String(PORT),
@@ -80,30 +88,36 @@ function startBackendServer() {
       DATA_DIR: dataDir,
     };
 
-    // Try starting with electron as node first
+    function spawnWithElectron() {
+      try {
+        return spawn(process.execPath, [serverScript], {
+          cwd: serverDir,
+          env: { ...env, ELECTRON_RUN_AS_NODE: '1' },
+          stdio: ['ignore', logStream, logStream],
+          windowsHide: true,
+        });
+      } catch (err) {
+        console.error('Failed to spawn with electron as node:', err);
+        return null;
+      }
+    }
+
     try {
-      serverProcess = spawn(process.execPath, [serverScript], {
+      // First try system node
+      const proc = spawn('node', [serverScript], {
         cwd: serverDir,
-        env: { ...env, ELECTRON_RUN_AS_NODE: '1' },
-        stdio: 'ignore',
+        env,
+        stdio: ['ignore', logStream, logStream],
         windowsHide: true,
       });
 
-      serverProcess.on('error', () => {
-        // Fallback to system node if available
-        try {
-          serverProcess = spawn('node', [serverScript], {
-            cwd: serverDir,
-            env,
-            stdio: 'ignore',
-            windowsHide: true,
-          });
-        } catch (e) {
-          console.error('Failed to spawn fallback node:', e);
-        }
+      proc.on('error', () => {
+        serverProcess = spawnWithElectron();
       });
+
+      serverProcess = proc;
     } catch (err) {
-      console.error('Error spawning backend:', err);
+      serverProcess = spawnWithElectron();
     }
   } catch (err) {
     console.error('Exception launching backend:', err);
@@ -147,14 +161,33 @@ async function createWindow() {
     return { action: 'deny' };
   });
 
+  // Developer Tools shortcut (F12) for diagnostic support
+  mainWindow.webContents.on('before-input-event', (event, input) => {
+    if (input.key === 'F12' || (input.control && input.shift && input.key.toLowerCase() === 'i')) {
+      mainWindow.webContents.toggleDevTools();
+      event.preventDefault();
+    }
+  });
+
+  // Handle load failure gracefully
+  mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {
+    console.error('Failed to load:', validatedURL, errorCode, errorDescription);
+    const indexPath = path.join(__dirname, '../dist/index.html');
+    if (fs.existsSync(indexPath)) {
+      mainWindow.loadFile(indexPath);
+    }
+  });
+
   // Wait for server to start before loading
-  const isServerRunning = await checkServerReady(8000);
+  const isServerRunning = await checkServerReady(12000);
   if (isServerRunning) {
     mainWindow.loadURL(SERVER_URL);
   } else {
     // If not ready on HTTP yet, load index.html directly
     const indexPath = path.join(__dirname, '../dist/index.html');
-    mainWindow.loadFile(indexPath);
+    if (fs.existsSync(indexPath)) {
+      mainWindow.loadFile(indexPath);
+    }
   }
 
   mainWindow.once('ready-to-show', () => {

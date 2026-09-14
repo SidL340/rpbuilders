@@ -139,12 +139,6 @@ function initializeAndMigrateSchema() {
         LEFT JOIN users u ON v.entered_by = u.id
         LEFT JOIN users ap ON v.approved_by = ap.id;
       `);
-      // Auto-migrate missing columns in company_settings table
-      const companyCols = db.prepare("PRAGMA table_info(company_settings)").all().map(c => c.name);
-      if (!companyCols.includes('company_logo_data')) {
-        console.log('Migrating: Adding column company_logo_data to company_settings table...');
-        db.exec('ALTER TABLE company_settings ADD COLUMN company_logo_data TEXT');
-      }
 
       // Record and verify schema_migrations
       db.exec(`
