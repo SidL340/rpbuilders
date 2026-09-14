@@ -20,7 +20,8 @@
     },
     "files": [
       "dist/**/*",
-      "electron/**/*"
+      "electron/**/*",
+      "build/**/*"
     ],
     "extraResources": [
       {
@@ -45,6 +46,7 @@
       }
     ],
     "win": {
+      "icon": "build/icon.ico",
       "target": [
         "nsis",
         "portable"
@@ -55,7 +57,9 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "R.P. Builders ERP"
+      "shortcutName": "R.P. Builders ERP",
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico"
     }
   },
   "dependencies": {
@@ -84,6 +88,7 @@
     "electron": "^40.8.0",
     "electron-builder": "^26.7.0",
     "oxlint": "^1.79.0",
+    "png-to-ico": "^3.0.2",
     "vite": "^8.2.2"
   }
 }

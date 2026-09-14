@@ -117,6 +117,7 @@ async function createWindow() {
     minWidth: 1024,
     minHeight: 700,
     title: 'R.P. Builders ERP',
+    icon: path.join(__dirname, '../build/icon.png'),
     backgroundColor: '#0f172a',
     show: false,
     webPreferences: {
