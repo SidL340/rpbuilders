@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS company_settings (
   company_email TEXT,
   company_pan TEXT,
   company_logo_path TEXT,
+  company_logo_data TEXT,
   fiscal_year_start TEXT DEFAULT '2082-04-01',
   currency TEXT DEFAULT 'NPR',
   date_format TEXT DEFAULT 'BS',

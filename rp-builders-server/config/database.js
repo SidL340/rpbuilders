@@ -64,25 +64,30 @@ function initializeAndMigrateSchema() {
         console.log('✅ Local SQLite database initialized successfully (admin / password)!');
       }
     } else {
-      // Auto-migrate missing columns in vouchers table if upgrading
-      const voucherCols = db.prepare("PRAGMA table_info(vouchers)").all().map(c => c.name);
-      
-      const newCols = [
-        { name: 'fiscal_year', type: 'TEXT DEFAULT "2083/84"' },
-        { name: 'cheque_date_bs', type: 'TEXT' },
-        { name: 'bank_name', type: 'TEXT' },
-        { name: 'bank_voucher_no', type: 'TEXT' },
-        { name: 'cash_receiver_name', type: 'TEXT' },
-        { name: 'cash_receiver_phone', type: 'TEXT' },
-        { name: 'cash_handed_by', type: 'TEXT' }
-      ];
+    // Always ensure missing columns exist unconditionally on startup
+    const companyCols = db.prepare("PRAGMA table_info(company_settings)").all().map(c => c.name);
+    if (!companyCols.includes('company_logo_data')) {
+      console.log('Migrating: Adding column company_logo_data to company_settings table...');
+      db.exec('ALTER TABLE company_settings ADD COLUMN company_logo_data TEXT');
+    }
 
-      newCols.forEach(col => {
-        if (!voucherCols.includes(col.name)) {
-          console.log(`Migrating: Adding column ${col.name} to vouchers table...`);
-          db.exec(`ALTER TABLE vouchers ADD COLUMN ${col.name} ${col.type}`);
-        }
-      });
+    const voucherCols = db.prepare("PRAGMA table_info(vouchers)").all().map(c => c.name);
+    const newCols = [
+      { name: 'fiscal_year', type: 'TEXT DEFAULT "2083/84"' },
+      { name: 'cheque_date_bs', type: 'TEXT' },
+      { name: 'bank_name', type: 'TEXT' },
+      { name: 'bank_voucher_no', type: 'TEXT' },
+      { name: 'cash_receiver_name', type: 'TEXT' },
+      { name: 'cash_receiver_phone', type: 'TEXT' },
+      { name: 'cash_handed_by', type: 'TEXT' }
+    ];
+
+    newCols.forEach(col => {
+      if (!voucherCols.includes(col.name)) {
+        console.log(`Migrating: Adding column ${col.name} to vouchers table...`);
+        db.exec(`ALTER TABLE vouchers ADD COLUMN ${col.name} ${col.type}`);
+      }
+    });
 
       // Refresh Views
       db.exec(`
