@@ -119,9 +119,9 @@ router.get('/', authenticate, async (req, res) => {
 // GET /api/vouchers/daybook - day book for a specific date or date range
 router.get('/daybook', authenticate, async (req, res) => {
   try {
-    const { date_bs, project_id, type, fiscal_year } = req.query;
+    let { date_bs, project_id, type, fiscal_year } = req.query;
     if (!date_bs && !fiscal_year) {
-      return res.status(400).json({ success: false, message: 'Date (BS) or Fiscal Year is required' });
+      fiscal_year = calculateFiscalYear();
     }
 
     let query = `SELECT * FROM v_voucher_summary WHERE 1=1`;

@@ -164,8 +164,8 @@ router.post('/receipts', authenticate, async (req, res) => {
 router.get('/summary', authenticate, async (req, res) => {
   try {
     const [received] = await pool.query('SELECT COALESCE(SUM(amount), 0) AS total_funds_received FROM fund_receipts');
-    const [spent] = await pool.query('SELECT COALESCE(SUM(net_amount), 0) AS total_expense FROM vouchers WHERE voucher_type="payment" AND status="approved"');
-    const [cashBank] = await pool.query('SELECT COALESCE(SUM(current_balance), 0) AS total_balance FROM company_accounts WHERE is_active=1');
+    const [spent] = await pool.query("SELECT COALESCE(SUM(net_amount), 0) AS total_expense FROM vouchers WHERE voucher_type = 'payment' AND status = 'approved'");
+    const [cashBank] = await pool.query('SELECT COALESCE(SUM(current_balance), 0) AS total_balance FROM company_accounts WHERE is_active = 1');
 
     const [byType] = await pool.query(`
       SELECT fs.source_type, SUM(fr.amount) as total

@@ -167,36 +167,37 @@ router.get('/stock', authenticate, async (req, res) => {
   try {
     const { project_id } = req.query;
     let query = `
-      SELECT 
-        m.id as material_id,
-        m.material_code,
-        m.material_name,
-        m.unit,
-        p.id as project_id,
-        p.project_name,
-        COALESCE(purchased.total_purchased, 0) as total_purchased,
-        COALESCE(used.total_used, 0) as total_used,
-        COALESCE(purchased.total_purchased, 0) - COALESCE(used.total_used, 0) as current_stock
-      FROM materials m
-      CROSS JOIN projects p
-      LEFT JOIN (
-        SELECT project_id, material_id, SUM(quantity) as total_purchased
-        FROM material_purchases GROUP BY project_id, material_id
-      ) purchased ON purchased.material_id = m.id AND purchased.project_id = p.id
-      LEFT JOIN (
-        SELECT project_id, material_id, SUM(quantity_used) as total_used
-        FROM material_usage GROUP BY project_id, material_id
-      ) used ON used.material_id = m.id AND used.project_id = p.id
-      WHERE m.is_active = 1
+      SELECT * FROM (
+        SELECT 
+          m.id as material_id,
+          m.material_code,
+          m.material_name,
+          m.unit,
+          p.id as project_id,
+          p.project_name,
+          COALESCE(purchased.total_purchased, 0) as total_purchased,
+          COALESCE(used.total_used, 0) as total_used,
+          COALESCE(purchased.total_purchased, 0) - COALESCE(used.total_used, 0) as current_stock
+        FROM materials m
+        CROSS JOIN projects p
+        LEFT JOIN (
+          SELECT project_id, material_id, SUM(quantity) as total_purchased
+          FROM material_purchases GROUP BY project_id, material_id
+        ) purchased ON purchased.material_id = m.id AND purchased.project_id = p.id
+        LEFT JOIN (
+          SELECT project_id, material_id, SUM(quantity_used) as total_used
+          FROM material_usage GROUP BY project_id, material_id
+        ) used ON used.material_id = m.id AND used.project_id = p.id
+        WHERE m.is_active = 1
+        ${project_id ? 'AND p.id = ?' : ''}
+      ) sub
+      WHERE sub.total_purchased > 0 OR sub.total_used > 0
+      ORDER BY sub.project_name, sub.material_name
     `;
     const params = [];
-
     if (project_id) {
-      query += ` AND p.id = ?`;
       params.push(project_id);
     }
-
-    query += ` HAVING total_purchased > 0 OR total_used > 0 ORDER BY p.project_name, m.material_name`;
 
     const [rows] = await pool.query(query, params);
     res.json({ success: true, data: rows });
