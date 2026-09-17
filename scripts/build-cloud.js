@@ -18,9 +18,19 @@ console.log('🚀 [CLOUD BUILD] Starting R.P. Builders ERP Cloud Build Pipeline.
 console.log(`📁 Client Dir: ${clientDir}`);
 console.log(`📁 Server Dir: ${serverDir}`);
 
-// 1. Build Client with Vite
-console.log('\n📦 Step 1: Building React Vite Client...');
+// 1. Install Client Dependencies & Build with Vite
+console.log('\n📦 Step 1: Preparing and building React Vite Frontend...');
 try {
+  if (!fs.existsSync(path.join(clientDir, 'node_modules')) || !fs.existsSync(path.join(clientDir, 'node_modules', '.bin', 'vite'))) {
+    console.log('Installing client dependencies (including Vite)...');
+    execSync('npm install --include=dev', {
+      cwd: clientDir,
+      stdio: 'inherit',
+      env: { ...process.env, NODE_ENV: 'development' }
+    });
+  }
+
+  console.log('Compiling React Vite production bundle...');
   execSync('npm run build', {
     cwd: clientDir,
     stdio: 'inherit',
@@ -50,8 +60,8 @@ try {
 // 3. Ensure server dependencies are installed
 console.log('\n🛠️ Step 3: Verifying backend server dependencies...');
 try {
-  if (!fs.existsSync(path.join(serverDir, 'node_modules'))) {
-    console.log('Installing server dependencies...');
+  if (!fs.existsSync(path.join(serverDir, 'node_modules')) || !fs.existsSync(path.join(serverDir, 'node_modules', 'express'))) {
+    console.log('Installing server dependencies in rp-builders-server...');
     execSync('npm install', { cwd: serverDir, stdio: 'inherit' });
   }
   console.log('✅ Server environment ready!');
