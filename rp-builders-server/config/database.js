@@ -7,7 +7,7 @@ require('dotenv').config({ path: path.join(__dirname, '../.env') });
 const hasCloudMySQL = Boolean(
   (process.env.DATABASE_URL && (process.env.DATABASE_URL.startsWith('mysql') || process.env.DATABASE_URL.startsWith('mariadb'))) ||
   process.env.MYSQL_HOST ||
-  process.env.DB_HOST
+  (process.env.DB_HOST && process.env.DB_HOST !== 'localhost' && process.env.DB_HOST !== '127.0.0.1')
 );
 
 let pool = null;
@@ -28,7 +28,7 @@ if (hasCloudMySQL) {
     };
   } else {
     mysqlConfig = {
-      host: process.env.MYSQL_HOST || process.env.DB_HOST || 'localhost',
+      host: process.env.MYSQL_HOST || process.env.DB_HOST,
       user: process.env.MYSQL_USER || process.env.DB_USER || 'root',
       password: process.env.MYSQL_PASSWORD || process.env.DB_PASSWORD || '',
       database: process.env.MYSQL_DATABASE || process.env.DB_NAME || 'rp_builders_db',
@@ -52,22 +52,9 @@ if (hasCloudMySQL) {
         const schemaPath = path.join(__dirname, '../database/schema.sql');
         if (fs.existsSync(schemaPath)) {
           const sql = fs.readFileSync(schemaPath, 'utf8');
-          // Split queries by semicolon to execute safely
-          const statements = sql
-            .split(/;\s*$/m)
-            .map(s => s.trim())
-            .filter(s => s.length > 0);
-
-          for (const statement of statements) {
-            try {
-              await rawPool.query(statement);
-            } catch (queryErr) {
-              // Ignore view replacement or non-fatal drop errors
-              if (!queryErr.message.includes('already exists') && !queryErr.message.includes("doesn't exist")) {
-                console.warn('⚠️ SQL notice:', queryErr.message);
-              }
-            }
-          }
+          await rawPool.query('SET FOREIGN_KEY_CHECKS = 0');
+          await rawPool.query(sql);
+          await rawPool.query('SET FOREIGN_KEY_CHECKS = 1');
 
           const hashedAdmin = bcrypt.hashSync('password', 10);
           await rawPool.query('UPDATE users SET password_hash = ? WHERE username = ?', [hashedAdmin, 'admin']);
