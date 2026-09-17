@@ -66,13 +66,13 @@ CREATE TABLE users (
   FOREIGN KEY (role_id) REFERENCES roles(id)
 );
 
--- Default admin user (password: admin123 - hashed)
+-- Default admin user
 INSERT INTO users (name, username, email, password_hash, role_id, phone)
 VALUES (
   'System Administrator',
-  'admin',
+  'admin@rpbuilders',
   'admin@rpbuilders.com',
-  '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', -- password: password
+  '$2b$10$rARmz3xy2qLI7Lpa3zgxoeIwdso0PkCwbMzvff2KW88b2BPVs/bti', -- password: RPBUILDERS2026
   1,
   '9800000000'
 );

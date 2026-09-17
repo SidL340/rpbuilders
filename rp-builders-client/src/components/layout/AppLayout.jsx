@@ -106,17 +106,12 @@ export default function AppLayout() {
         {/* Company Header */}
         <div className="p-5 border-b border-slate-800 flex items-center justify-between">
           <div className="flex items-center gap-3 min-w-0">
-            {company?.company_logo_data ? (
-              <img
-                src={company.company_logo_data}
-                alt="Logo"
-                className="w-10 h-10 rounded-xl object-contain bg-white p-1 shadow-md shrink-0"
-              />
-            ) : (
-              <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white font-black shadow-md shadow-blue-500/20 shrink-0">
-                <Building2 className="w-5 h-5" />
-              </div>
-            )}
+            <img
+              src={company?.company_logo_data || '/logo.png'}
+              alt="Logo"
+              onError={(e) => { e.currentTarget.src = '/logo.png'; }}
+              className="w-10 h-10 rounded-xl object-contain bg-white p-1 shadow-md shrink-0"
+            />
             <div className="min-w-0">
               <h1 className="font-black text-white text-sm tracking-tight leading-none truncate">
                 {company?.company_name || 'R.P. BUILDERS'}

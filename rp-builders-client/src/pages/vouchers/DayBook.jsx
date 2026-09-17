@@ -1,3 +1,4 @@
+import React, { useState, useEffect } from 'react';
 import {
   Calendar,
   Printer,
@@ -314,21 +315,16 @@ export default function DayBook() {
 
       {/* Printable Report Header */}
       <div className="hidden print:block text-center border-b-2 border-slate-800 pb-4 mb-4">
-        {company?.company_logo_data ? (
-          <img
-            src={company.company_logo_data}
-            alt={company?.company_name || 'Logo'}
-            className="h-16 max-w-[200px] object-contain mx-auto mb-2"
-          />
-        ) : (
-          <h2 className="text-2xl font-black uppercase text-slate-900 tracking-tight">
-            {company?.company_name || 'R.P. BUILDERS PVT. LTD.'}
-          </h2>
-        )}
+        <img
+          src={company?.company_logo_data || '/logo.png'}
+          alt={company?.company_name || 'Logo'}
+          onError={(e) => { e.currentTarget.src = '/logo.png'; }}
+          className="h-16 max-w-[200px] object-contain mx-auto mb-2"
+        />
         <h2 className="text-xl font-black uppercase text-slate-900 tracking-tight">
           {company?.company_name || 'R.P. BUILDERS PVT. LTD.'}
         </h2>
-        <p className="text-xs text-slate-600">{company?.address || 'Nepal'} • Construction & Engineering • PAN: {company?.pan_no || '600123456'}</p>
+        <p className="text-xs text-slate-600">{company?.company_address || company?.address || 'Nepal'} • Construction & Engineering • PAN: {company?.company_pan || company?.pan_no || '601234567'}</p>
         <h3 className="text-lg font-bold mt-2 underline">
           दैनिक रोजनामचा खाता (DAY BOOK REGISTER)
         </h3>

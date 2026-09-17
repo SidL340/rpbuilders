@@ -56,11 +56,14 @@ if (hasCloudMySQL) {
           await rawPool.query(sql);
           await rawPool.query('SET FOREIGN_KEY_CHECKS = 1');
 
-          const hashedAdmin = bcrypt.hashSync('password', 10);
-          await rawPool.query('UPDATE users SET password_hash = ? WHERE username = ?', [hashedAdmin, 'admin']);
-          console.log('✅ Cloud MySQL tables created and admin user seeded (admin / password)!');
+          const hashedAdmin = bcrypt.hashSync('RPBUILDERS2026', 10);
+          await rawPool.query('UPDATE users SET username = ?, email = ?, password_hash = ? WHERE username = ? OR username = ?', ['admin@rpbuilders', 'admin@rpbuilders.com', hashedAdmin, 'admin', 'admin@rpbuilders']);
+          console.log('✅ Cloud MySQL tables created and admin user seeded (admin@rpbuilders)!');
         }
       } else {
+        // Ensure admin user is migrated to admin@rpbuilders
+        const hashedAdmin = bcrypt.hashSync('RPBUILDERS2026', 10);
+        await rawPool.query('UPDATE users SET username = ?, email = ?, password_hash = ? WHERE username = ?', ['admin@rpbuilders', 'admin@rpbuilders.com', hashedAdmin, 'admin']);
         console.log('✅ Cloud MySQL tables verified.');
       }
     } catch (err) {
@@ -154,11 +157,14 @@ if (hasCloudMySQL) {
           const sql = fs.readFileSync(schemaPath, 'utf8');
           db.exec(sql);
 
-          const hashedAdmin = bcrypt.hashSync('password', 10);
-          db.prepare('UPDATE users SET password_hash = ? WHERE username = ?').run(hashedAdmin, 'admin');
-          console.log('✅ SQLite database initialized successfully (admin / password)!');
+          const hashedAdmin = bcrypt.hashSync('RPBUILDERS2026', 10);
+          db.prepare('UPDATE users SET username = ?, email = ?, password_hash = ? WHERE username = ? OR username = ?').run('admin@rpbuilders', 'admin@rpbuilders.com', hashedAdmin, 'admin', 'admin@rpbuilders');
+          console.log('✅ SQLite database initialized successfully (admin@rpbuilders)!');
         }
       } else {
+        // Ensure admin user is migrated to admin@rpbuilders
+        const hashedAdmin = bcrypt.hashSync('RPBUILDERS2026', 10);
+        db.prepare('UPDATE users SET username = ?, email = ?, password_hash = ? WHERE username = ?').run('admin@rpbuilders', 'admin@rpbuilders.com', hashedAdmin, 'admin');
         // Always ensure missing columns exist unconditionally on startup
         const companyCols = db.prepare("PRAGMA table_info(company_settings)").all().map(c => c.name);
         if (!companyCols.includes('company_logo_data')) {

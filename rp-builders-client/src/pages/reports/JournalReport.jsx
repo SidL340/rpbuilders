@@ -218,17 +218,12 @@ export default function JournalReport() {
       {/* Printable Report Header with Logo */}
       <div className="hidden print:block text-center border-b-2 border-slate-900 pb-4 mb-4 font-sans">
         <div className="flex items-center justify-center gap-4 mb-2">
-          {company?.company_logo_data ? (
-            <img
-              src={company.company_logo_data}
-              alt="Company Logo"
-              className="w-16 h-16 object-contain rounded-lg"
-            />
-          ) : (
-            <div className="w-12 h-12 bg-slate-900 text-white rounded-xl flex items-center justify-center font-black text-lg">
-              RP
-            </div>
-          )}
+          <img
+            src={company?.company_logo_data || '/logo.png'}
+            alt="Company Logo"
+            onError={(e) => { e.currentTarget.src = '/logo.png'; }}
+            className="w-16 h-16 object-contain rounded-lg"
+          />
           <div className="text-left">
             <h2 className="text-2xl font-black uppercase text-slate-900 tracking-tight leading-none">
               {company?.company_name || 'R.P. BUILDERS PVT. LTD.'}

@@ -10,7 +10,7 @@ const DEFAULT_COMPANY = {
   company_phone: '01-4444444',
   company_email: 'info@rpbuilders.com',
   company_pan: '601234567',
-  company_logo_data: null,
+  company_logo_data: '/logo.png',
 };
 
 export function CompanyProvider({ children }) {

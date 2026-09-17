@@ -59,14 +59,14 @@ CREATE TABLE IF NOT EXISTS users (
   FOREIGN KEY (role_id) REFERENCES roles(id)
 );
 
--- Default admin user (password: password)
+-- Default admin user
 INSERT OR IGNORE INTO users (id, name, username, email, password_hash, role_id, phone)
 VALUES (
   1,
   'System Administrator',
-  'admin',
+  'admin@rpbuilders',
   'admin@rpbuilders.com',
-  '$2b$10$QJzI38X1mQfJ0x6bH4xMWe1X11h4qX4n0B7u9L3r6K2p8Y5s7T1v2', -- bcrypt placeholder, updated dynamically
+  '$2b$10$rARmz3xy2qLI7Lpa3zgxoeIwdso0PkCwbMzvff2KW88b2BPVs/bti', -- password: RPBUILDERS2026
   1,
   '9800000000'
 );
