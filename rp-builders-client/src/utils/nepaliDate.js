@@ -5,8 +5,16 @@ export const BS_MONTHS = ['बैशाख', 'जेठ', 'असार', 'श�
 export const BS_MONTHS_EN = ['Baisakh', 'Jestha', 'Ashadh', 'Shrawan', 'Bhadra', 'Ashoj', 'Kartik', 'Mangsir', 'Poush', 'Magh', 'Falgun', 'Chaitra'];
 export const BS_DAYS_NP = ['०', '१', '२', '३', '४', '५', '६', '७', '८', '९'];
 
-// Official days in each BS month (starting from 2078 BS to 2090 BS)
+// Official days in each BS month (calibrated from 2070 BS to 2095 BS)
 const BS_MONTH_DAYS = {
+  2070: [31, 31, 31, 32, 31, 31, 30, 29, 30, 29, 30, 30],
+  2071: [31, 31, 32, 31, 31, 31, 30, 29, 30, 29, 30, 30],
+  2072: [31, 32, 31, 32, 31, 30, 30, 30, 29, 30, 29, 31],
+  2073: [31, 31, 31, 32, 31, 31, 30, 29, 30, 29, 30, 30],
+  2074: [31, 31, 32, 31, 31, 31, 30, 29, 30, 29, 30, 30],
+  2075: [31, 32, 31, 32, 31, 30, 30, 30, 29, 29, 30, 30],
+  2076: [31, 32, 31, 32, 31, 30, 30, 30, 29, 30, 29, 31],
+  2077: [31, 32, 31, 32, 31, 30, 30, 30, 29, 30, 29, 31],
   2078: [31, 31, 31, 32, 31, 31, 30, 29, 30, 29, 30, 30],
   2079: [31, 31, 32, 31, 31, 31, 30, 29, 30, 29, 30, 30],
   2080: [31, 31, 32, 31, 31, 30, 30, 30, 29, 30, 30, 30],
@@ -20,13 +28,18 @@ const BS_MONTH_DAYS = {
   2088: [31, 31, 32, 32, 31, 30, 29, 30, 30, 29, 30, 30],
   2089: [31, 32, 31, 32, 31, 30, 30, 30, 29, 29, 30, 31],
   2090: [31, 31, 32, 31, 31, 30, 30, 30, 29, 30, 30, 30],
+  2091: [31, 31, 32, 31, 31, 30, 30, 30, 29, 30, 30, 30],
+  2092: [30, 32, 31, 32, 31, 30, 30, 30, 29, 30, 30, 30],
+  2093: [31, 31, 32, 31, 31, 30, 30, 30, 29, 30, 30, 30],
+  2094: [31, 31, 32, 31, 31, 30, 30, 30, 29, 30, 30, 30],
+  2095: [31, 32, 31, 32, 31, 30, 30, 30, 29, 29, 30, 31],
 };
 
-// Calibrated reference: 2079-01-01 BS = 2022-04-14 AD UTC
-const REF_BS_YEAR = 2079;
+// Calibrated reference: 2070-01-01 BS = 2013-04-14 AD UTC
+const REF_BS_YEAR = 2070;
 const REF_BS_MONTH = 1;
 const REF_BS_DAY = 1;
-const REF_AD_YEAR = 2022;
+const REF_AD_YEAR = 2013;
 const REF_AD_MONTH = 3; // April (0-indexed)
 const REF_AD_DAY = 14;
 
@@ -151,7 +164,7 @@ export function formatBSDate(bsDate, lang = 'np') {
  * Get Aarthik Barsha (आर्थिक वर्ष / Fiscal Year) for a given BS date
  * Shrawan 1 (04-01) to Ashadh end (03-31/32)
  * e.g. "2083-05-14" (Bhadra 14) -> "2083/84" (२०८३/८४)
- * e.g. "2083-02-10" (Jestha 10) -> "2082/83" (२०८२/८३)
+ * e.g. "2081-02-10" (Jestha 10) -> "2080/81" (२०८०/८१)
  */
 export function getFiscalYear(bsDate) {
   const dateStr = bsDate || todayBS();
@@ -166,15 +179,15 @@ export function getFiscalYear(bsDate) {
   if (m >= 4) {
     // Shrawan (4) to Chaitra (12)
     const nextY = y + 1;
-    label = `${y}/${String(nextY).slice(-2)}`; // e.g. "2083/84"
+    label = `${y}/${String(nextY).slice(-2)}`; // e.g. "2081/82"
     start = `${y}-04-01`;
-    end = `${nextY}-03-32`;
+    end = `${nextY}-03-${getDaysInBSMonth(nextY, 3)}`;
   } else {
     // Baisakh (1) to Ashadh (3)
     const prevY = y - 1;
-    label = `${prevY}/${String(y).slice(-2)}`; // e.g. "2082/83"
+    label = `${prevY}/${String(y).slice(-2)}`; // e.g. "2080/81"
     start = `${prevY}-04-01`;
-    end = `${y}-03-32`;
+    end = `${y}-03-${getDaysInBSMonth(y, 3)}`;
   }
 
   return {
@@ -187,7 +200,21 @@ export function getFiscalYear(bsDate) {
 }
 
 /**
- * Get list of standard Nepali Fiscal Years for dropdowns
+ * Get Date Range for any Fiscal Year label (e.g. "2081/82" or "2080/81")
+ */
+export function getFiscalYearDateRange(fiscalYear) {
+  if (!fiscalYear) return { start: '', end: '' };
+  const parts = fiscalYear.split('/');
+  const startYear = parseInt(parts[0], 10);
+  const endYear = startYear + 1;
+  return {
+    start: `${startYear}-04-01`,
+    end: `${endYear}-03-${getDaysInBSMonth(endYear, 3)}`,
+  };
+}
+
+/**
+ * Get list of standard Nepali Fiscal Years for dropdowns (current + past 10 years)
  */
 export function getFiscalYearList() {
   const currentFY = getFiscalYear(todayBS()).label;
@@ -198,11 +225,15 @@ export function getFiscalYearList() {
     '2081/82',
     '2080/81',
     '2079/80',
+    '2078/79',
+    '2077/78',
+    '2076/77',
+    '2075/76',
   ];
 
   return years.map(fy => ({
     value: fy,
-    label: `आ.व. ${toNepaliDigits(fy)} (${fy})`,
+    label: `आ.व. ${toNepaliDigits(fy)} (${fy})${fy === currentFY ? ' - चालु आ.व.' : ''}`,
     isCurrent: fy === currentFY,
   }));
 }
@@ -218,5 +249,6 @@ export default {
   todayAD,
   formatBSDate,
   getFiscalYear,
+  getFiscalYearDateRange,
   getFiscalYearList,
 };

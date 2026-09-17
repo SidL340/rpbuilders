@@ -6,7 +6,19 @@ const { authenticate } = require('../middleware/auth');
 // GET /api/categories - hierarchical list
 router.get('/', authenticate, async (req, res) => {
   try {
-    const [all] = await pool.query('SELECT * FROM expense_categories WHERE is_active = 1 ORDER BY sort_order ASC, name ASC');
+    const { type } = req.query; // 'expense' or 'income'
+    let query = 'SELECT * FROM expense_categories WHERE is_active = 1';
+    const params = [];
+    if (type === 'income') {
+      query += ' AND category_type = ?';
+      params.push('income');
+    } else if (type === 'expense') {
+      query += ' AND (category_type = ? OR category_type IS NULL)';
+      params.push('expense');
+    }
+    query += ' ORDER BY sort_order ASC, name ASC';
+
+    const [all] = await pool.query(query, params);
 
     const parents = all.filter(c => !c.parent_id);
     const result = parents.map(parent => ({
@@ -23,13 +35,24 @@ router.get('/', authenticate, async (req, res) => {
 // GET /api/categories/flat - flat list
 router.get('/flat', authenticate, async (req, res) => {
   try {
-    const [rows] = await pool.query(`
+    const { type } = req.query;
+    let query = `
       SELECT c.*, p.name as parent_name 
       FROM expense_categories c 
       LEFT JOIN expense_categories p ON c.parent_id = p.id 
       WHERE c.is_active = 1 
-      ORDER BY c.parent_id IS NULL DESC, c.sort_order ASC, c.name ASC
-    `);
+    `;
+    const params = [];
+    if (type === 'income') {
+      query += ' AND c.category_type = ?';
+      params.push('income');
+    } else if (type === 'expense') {
+      query += ' AND (c.category_type = ? OR c.category_type IS NULL)';
+      params.push('expense');
+    }
+    query += ' ORDER BY c.parent_id IS NULL DESC, c.sort_order ASC, c.name ASC';
+
+    const [rows] = await pool.query(query, params);
     res.json({ success: true, data: rows });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

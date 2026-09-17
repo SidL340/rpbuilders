@@ -228,8 +228,14 @@ router.post('/', authenticate, async (req, res) => {
       `SELECT COUNT(*) as count FROM vouchers WHERE voucher_no LIKE ?`,
       [`${prefix}-${yearBs}-%`]
     );
-    const nextSeq = String((cntRes[0]?.count || 0) + 1).padStart(4, '0');
-    const voucher_no = `${prefix}-${yearBs}-${nextSeq}`;
+    let nextSeqNum = (cntRes[0]?.count || 0) + 1;
+    let voucher_no = `${prefix}-${yearBs}-${String(nextSeqNum).padStart(4, '0')}`;
+    let [exists] = await connection.query('SELECT id FROM vouchers WHERE voucher_no = ?', [voucher_no]);
+    while (exists && exists.length > 0) {
+      nextSeqNum++;
+      voucher_no = `${prefix}-${yearBs}-${String(nextSeqNum).padStart(4, '0')}`;
+      [exists] = await connection.query('SELECT id FROM vouchers WHERE voucher_no = ?', [voucher_no]);
+    }
 
     // Calculations
     const gross = parseFloat(gross_amount);
@@ -296,6 +302,128 @@ router.post('/', authenticate, async (req, res) => {
         fiscal_year: computedFiscalYear,
         net_amount: netAmount
       }
+    });
+  } catch (error) {
+    await connection.rollback();
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// POST /api/vouchers/bulk - Batch import past fiscal year expenses and income
+router.post('/bulk', authenticate, async (req, res) => {
+  const connection = await pool.getConnection();
+  await connection.beginTransaction();
+
+  try {
+    const list = Array.isArray(req.body) ? req.body : req.body.vouchers;
+    if (!Array.isArray(list) || list.length === 0) {
+      await connection.rollback();
+      return res.status(400).json({ success: false, message: 'No voucher items provided for bulk import' });
+    }
+
+    const prefixMap = {
+      payment: 'PV', receipt: 'RV', journal: 'JV',
+      contra: 'CV', debit_note: 'DN', credit_note: 'CN'
+    };
+
+    const insertedVouchers = [];
+
+    for (let i = 0; i < list.length; i++) {
+      const item = list[i];
+      const {
+        voucher_type = 'payment',
+        voucher_date_bs,
+        voucher_date_ad,
+        fiscal_year,
+        project_id,
+        party_id,
+        account_id,
+        category_id,
+        narration,
+        gross_amount = 0,
+        tds_percent = 0,
+        payment_mode = 'cash',
+        bill_no,
+        remarks,
+        cheque_no,
+        bank_name,
+      } = item;
+
+      if (!voucher_date_bs || !account_id || !narration || !gross_amount) {
+        throw new Error(`Row ${i + 1}: Date (BS), Account, Narration, and Gross Amount are mandatory`);
+      }
+
+      const computedFiscalYear = fiscal_year || calculateFiscalYear(voucher_date_bs);
+      const prefix = prefixMap[voucher_type] || 'VR';
+      const yearBs = (voucher_date_bs || '').substring(0, 4) || '2083';
+
+      const [cntRes] = await connection.query(
+        `SELECT COUNT(*) as count FROM vouchers WHERE voucher_no LIKE ?`,
+        [`${prefix}-${yearBs}-%`]
+      );
+      let nextSeqNum = (cntRes[0]?.count || 0) + 1;
+      let voucher_no = `${prefix}-${yearBs}-${String(nextSeqNum).padStart(4, '0')}`;
+      let [exists] = await connection.query('SELECT id FROM vouchers WHERE voucher_no = ?', [voucher_no]);
+      while (exists && exists.length > 0) {
+        nextSeqNum++;
+        voucher_no = `${prefix}-${yearBs}-${String(nextSeqNum).padStart(4, '0')}`;
+        [exists] = await connection.query('SELECT id FROM vouchers WHERE voucher_no = ?', [voucher_no]);
+      }
+
+      const gross = parseFloat(gross_amount);
+      const tdsPct = parseFloat(tds_percent || 0);
+      const tdsAmount = Math.round((gross * tdsPct / 100) * 100) / 100;
+      const netAmount = gross - tdsAmount;
+
+      const dateAd = voucher_date_ad || new Date().toISOString().split('T')[0];
+
+      const [insertResult] = await connection.query(
+        `INSERT INTO vouchers (
+          voucher_no, voucher_type, voucher_date_bs, voucher_date_ad, fiscal_year,
+          project_id, party_id, account_id,
+          payment_mode, cheque_no, bank_name,
+          category_id, narration,
+          gross_amount, tds_percent, tds_amount, net_amount,
+          status, approved_by, approved_at,
+          bill_no, remarks, entered_by
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          voucher_no, voucher_type, voucher_date_bs, dateAd, computedFiscalYear,
+          project_id || null, party_id || null, account_id,
+          payment_mode, cheque_no || null, bank_name || null,
+          category_id || null, narration,
+          gross, tdsPct, tdsAmount, netAmount,
+          'approved', req.user.id, new Date().toISOString(),
+          bill_no || null, remarks || null, req.user.id
+        ]
+      );
+
+      // Update account balance
+      if (voucher_type === 'payment') {
+        await connection.query(
+          'UPDATE company_accounts SET current_balance = current_balance - ? WHERE id = ?',
+          [netAmount, account_id]
+        );
+      } else if (voucher_type === 'receipt') {
+        await connection.query(
+          'UPDATE company_accounts SET current_balance = current_balance + ? WHERE id = ?',
+          [netAmount, account_id]
+        );
+      }
+
+      insertedVouchers.push({
+        id: insertResult.insertId,
+        voucher_no,
+        fiscal_year: computedFiscalYear,
+        net_amount: netAmount,
+      });
+    }
+
+    await connection.commit();
+    res.status(201).json({
+      success: true,
+      message: `Successfully imported ${insertedVouchers.length} vouchers into Fiscal Year records`,
+      data: insertedVouchers
     });
   } catch (error) {
     await connection.rollback();

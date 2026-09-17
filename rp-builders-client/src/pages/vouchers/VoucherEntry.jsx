@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   PlusCircle,
@@ -15,12 +15,19 @@ import {
   FileText,
   BookmarkCheck,
   Phone,
-  Landmark
+  Landmark,
+  Upload,
+  Download,
+  Clock,
+  RotateCcw,
+  FileSpreadsheet,
+  ListPlus
 } from 'lucide-react';
 import { vouchersAPI, projectsAPI, partiesAPI, categoriesAPI, accountsAPI } from '../../services/api';
-import { todayBS, todayAD, bsToAd, formatBSDate, getFiscalYear } from '../../utils/nepaliDate';
+import { todayBS, todayAD, bsToAd, formatBSDate, getFiscalYear, getFiscalYearList, getFiscalYearDateRange, toNepaliDigits } from '../../utils/nepaliDate';
 import { formatNPR, amountInWords } from '../../utils/helpers';
 import { useCompany } from '../../contexts/CompanyContext';
+import Modal from '../../components/ui/Modal';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -48,6 +55,7 @@ export default function VoucherEntry() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { company } = useCompany();
+  const amountInputRef = useRef(null);
 
   const [loading, setLoading] = useState(false);
   const [projects, setProjects] = useState([]);
@@ -84,6 +92,14 @@ export default function VoucherEntry() {
   });
 
   const activeFiscalYear = getFiscalYear(formData.voucher_date_bs);
+  const currentFiscalYear = getFiscalYear(todayBS()).label;
+  const isPastFiscalYear = activeFiscalYear.label !== currentFiscalYear;
+
+  // Bulk Import State
+  const [showBulkModal, setShowBulkModal] = useState(false);
+  const [bulkText, setBulkText] = useState('');
+  const [parsedBulkRows, setParsedBulkRows] = useState([]);
+  const [importingBulk, setImportingBulk] = useState(false);
 
   useEffect(() => {
     async function loadData() {
@@ -115,6 +131,34 @@ export default function VoucherEntry() {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  // When user picks a fiscal year from dropdown
+  const handleFiscalYearSelect = (fy) => {
+    if (!fy) return;
+    const range = getFiscalYearDateRange(fy);
+    setFormData((prev) => ({
+      ...prev,
+      voucher_date_bs: range.start || prev.voucher_date_bs,
+      cheque_date_bs: range.start || prev.cheque_date_bs,
+    }));
+  };
+
+  // Reset to Current Today BS
+  const handleResetToCurrentFY = () => {
+    setFormData((prev) => ({
+      ...prev,
+      voucher_date_bs: todayBS(),
+      cheque_date_bs: todayBS(),
+    }));
+  };
+
+  // Filter Categories by Mode: Expense vs Income
+  const visibleCategories = categories.filter((c) => {
+    if (formData.voucher_type === 'receipt') {
+      return c.category_type === 'income';
+    }
+    return c.category_type !== 'income';
+  });
+
   // Calculations
   const gross = parseFloat(formData.gross_amount) || 0;
   const tdsPct = parseFloat(formData.tds_percent) || 0;
@@ -126,12 +170,12 @@ export default function VoucherEntry() {
   const selectedCategory = categories.find((c) => String(c.id) === String(formData.category_id));
   const selectedAccount = accounts.find((a) => String(a.id) === String(formData.account_id));
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!formData.voucher_date_bs) return toast.error('Please enter BS Date');
-    if (!formData.account_id) return toast.error('Please select an account');
-    if (!formData.narration) return toast.error('Please enter transaction description / narration');
-    if (gross <= 0) return toast.error('Please enter a valid amount');
+  const handleSubmit = async (e, keepOpen = false) => {
+    if (e && e.preventDefault) e.preventDefault();
+    if (!formData.voucher_date_bs) return toast.error('कारोबार मिति (BS Date) प्रविष्टि गर्नुहोस्');
+    if (!formData.account_id) return toast.error('कृपया खाता छान्नुहोस्');
+    if (!formData.narration) return toast.error('कारोबारको विवरण / कैफियत प्रविष्टि गर्नुहोस्');
+    if (gross <= 0) return toast.error('कृपया मान्य रकम प्रविष्टि गर्नुहोस्');
 
     try {
       setLoading(true);
@@ -147,25 +191,185 @@ export default function VoucherEntry() {
       };
 
       const res = await vouchersAPI.create(payload);
-      toast.success(`भौचर ${res.data.data?.voucher_no || ''} सफलतापूर्वक सुरक्षित भयो!`);
+      toast.success(`भौचर ${res.data.data?.voucher_no || ''} (${activeFiscalYear.label}) सुरक्षित भयो!`);
 
-      // Reset amount and narration for quick subsequent entry
-      setFormData((prev) => ({
-        ...prev,
-        narration: '',
-        gross_amount: '',
-        bill_no: '',
-        cheque_no: '',
-        bank_voucher_no: '',
-        cash_receiver_name: '',
-        cash_receiver_phone: '',
-      }));
+      if (keepOpen) {
+        // Continuous Entry Mode: Retain date, project, account, payment mode, fiscal year
+        setFormData((prev) => ({
+          ...prev,
+          narration: '',
+          gross_amount: '',
+          bill_no: '',
+          cheque_no: '',
+          bank_voucher_no: '',
+          cash_receiver_name: '',
+          cash_receiver_phone: '',
+          remarks: '',
+        }));
+        if (amountInputRef.current) {
+          amountInputRef.current.focus();
+        }
+      } else {
+        // Standard Entry Reset
+        setFormData((prev) => ({
+          ...prev,
+          narration: '',
+          gross_amount: '',
+          bill_no: '',
+          cheque_no: '',
+          bank_voucher_no: '',
+          cash_receiver_name: '',
+          cash_receiver_phone: '',
+          remarks: '',
+        }));
+      }
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to save voucher');
     } finally {
       setLoading(false);
     }
   };
+
+  // -------------------------------------------------------------
+  // Bulk Past-Year Data Import Logic
+  // -------------------------------------------------------------
+  const downloadSampleCSV = () => {
+    const headers = 'Date_BS,Type,Project_Name,Category_Name,Party_Name,Account_Name,Gross_Amount,TDS_Percent,Narration,Bill_No,Payment_Mode';
+    const sampleRows = [
+      '2081-05-10,payment,Pokhara Bridge Project,Cement,Shree Ram Hardware,Main Cash Account,45000,0,Purchase of 50 bags OPC cement,INV-102,cash',
+      '2081-06-15,receipt,Pokhara Bridge Project,Client Running Bill / Invoice Payment,Department of Roads,Global IME Bank A/C,250000,1.5,Running bill #01 payment received,RB-01,bank_transfer',
+      '2081-08-20,payment,Butwal Commercial Complex,Site Labour,Ram Bahadur Thekedar,Nabil Bank A/C,75000,1.5,Masonry labour running wage payment,V-401,bank_transfer',
+      '2080-11-12,payment,Head Office,Electricity & Utilities,Nepal Electricity Authority,Main Cash Account,12500,0,Office electricity bill payment,BILL-99,cash',
+      '2080-12-25,receipt,Head Office,Owner / Partner Capital Investment,Director Capital,Global IME Bank A/C,500000,0,Capital equity deposit for project launch,DEP-01,bank_transfer',
+    ];
+    const csvContent = 'data:text/csv;charset=utf-8,' + encodeURIComponent([headers, ...sampleRows].join('\n'));
+    const link = document.createElement('a');
+    link.setAttribute('href', csvContent);
+    link.setAttribute('download', 'rp_builders_past_fiscal_year_template.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const parseCSVRows = (text) => {
+    if (!text.trim()) {
+      setParsedBulkRows([]);
+      return;
+    }
+
+    const lines = text.split(/\r?\n/).filter((l) => l.trim().length > 0);
+    if (lines.length === 0) return;
+
+    // Detect if first line is header
+    const firstLine = lines[0].toLowerCase();
+    const hasHeader = firstLine.includes('date') || firstLine.includes('type') || firstLine.includes('amount');
+    const dataLines = hasHeader ? lines.slice(1) : lines;
+
+    const parsed = dataLines.map((line, index) => {
+      // Handle tab-separated (copy-paste from Excel) or comma-separated
+      const cols = line.includes('\t') ? line.split('\t') : line.split(',');
+      const clean = cols.map((c) => c.replace(/^["']|["']$/g, '').trim());
+
+      const dateBs = clean[0] || '';
+      const vType = (clean[1] || 'payment').toLowerCase().includes('rec') ? 'receipt' : 'payment';
+      const projStr = clean[2] || '';
+      const catStr = clean[3] || '';
+      const partyStr = clean[4] || '';
+      const accStr = clean[5] || '';
+      const grossAmt = parseFloat(clean[6]) || 0;
+      const tds = parseFloat(clean[7]) || 0;
+      const narr = clean[8] || (vType === 'receipt' ? 'Past year income record' : 'Past year expense record');
+      const bill = clean[9] || '';
+      const mode = (clean[10] || 'cash').toLowerCase();
+
+      // Auto-match metadata
+      const matchedProj = projects.find(
+        (p) => p.project_name.toLowerCase().includes(projStr.toLowerCase()) || p.project_code.toLowerCase() === projStr.toLowerCase()
+      );
+      const matchedCat = categories.find(
+        (c) => c.name.toLowerCase().includes(catStr.toLowerCase()) || c.code.toLowerCase() === catStr.toLowerCase()
+      );
+      const matchedParty = parties.find((p) => p.party_name.toLowerCase().includes(partyStr.toLowerCase()));
+      const matchedAcc = accounts.find((a) => a.account_name.toLowerCase().includes(accStr.toLowerCase())) || accounts[0];
+
+      const rowFY = getFiscalYear(dateBs).label;
+      const isValid = Boolean(dateBs && grossAmt > 0 && matchedAcc);
+
+      return {
+        id: index + 1,
+        voucher_date_bs: dateBs,
+        voucher_type: vType,
+        fiscal_year: rowFY,
+        project_id: matchedProj ? matchedProj.id : null,
+        projectName: matchedProj ? matchedProj.project_name : '🏢 Head Office',
+        category_id: matchedCat ? matchedCat.id : null,
+        categoryName: matchedCat ? matchedCat.name : catStr || 'General',
+        party_id: matchedParty ? matchedParty.id : null,
+        partyName: matchedParty ? matchedParty.party_name : partyStr || 'N/A',
+        account_id: matchedAcc ? matchedAcc.id : accounts[0]?.id,
+        accountName: matchedAcc ? matchedAcc.account_name : 'Default Account',
+        gross_amount: grossAmt,
+        tds_percent: tds,
+        payment_mode: ['cash', 'cheque', 'bank_transfer'].includes(mode) ? mode : 'cash',
+        narration: narr,
+        bill_no: bill,
+        isValid,
+      };
+    });
+
+    setParsedBulkRows(parsed);
+  };
+
+  const handleBulkFileChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      const content = evt.target.result;
+      setBulkText(content);
+      parseCSVRows(content);
+    };
+    reader.readAsText(file);
+  };
+
+  const handleImportAllVouchers = async () => {
+    const validRows = parsedBulkRows.filter((r) => r.isValid);
+    if (validRows.length === 0) {
+      return toast.error('No valid rows to import. Please check date and amount.');
+    }
+
+    try {
+      setImportingBulk(true);
+      const payload = validRows.map((r) => ({
+        voucher_type: r.voucher_type,
+        voucher_date_bs: r.voucher_date_bs,
+        voucher_date_ad: bsToAd(r.voucher_date_bs) || todayAD(),
+        fiscal_year: r.fiscal_year,
+        project_id: r.project_id,
+        category_id: r.category_id,
+        party_id: r.party_id,
+        account_id: r.account_id,
+        gross_amount: r.gross_amount,
+        tds_percent: r.tds_percent,
+        payment_mode: r.payment_mode,
+        narration: r.narration,
+        bill_no: r.bill_no,
+      }));
+
+      const res = await vouchersAPI.createBulk(payload);
+      toast.success(`सफलतापूर्वक ${res.data.data?.length || validRows.length} वटा भौचरहरू प्रणालीमा प्रविष्टि भए!`);
+      setShowBulkModal(false);
+      setBulkText('');
+      setParsedBulkRows([]);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to bulk import vouchers');
+    } finally {
+      setImportingBulk(false);
+    }
+  };
+
+  const bulkTotalPayment = parsedBulkRows.filter((r) => r.voucher_type === 'payment').reduce((sum, r) => sum + r.gross_amount, 0);
+  const bulkTotalReceipt = parsedBulkRows.filter((r) => r.voucher_type === 'receipt').reduce((sum, r) => sum + r.gross_amount, 0);
 
   return (
     <div className="space-y-6">
@@ -174,33 +378,78 @@ export default function VoucherEntry() {
         <div>
           <div className="flex items-center gap-2">
             <span className="text-[10px] font-black uppercase tracking-wider bg-blue-100 text-blue-800 px-2.5 py-0.5 rounded-full">
-              द्रुत दैनिक इन्ट्री
+              द्रुत इन्ट्री पोर्टल
             </span>
-            <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+            <span
+              className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${
+                isPastFiscalYear
+                  ? 'bg-amber-50 text-amber-800 border-amber-300 animate-pulse'
+                  : 'text-emerald-700 bg-emerald-50 border-emerald-200'
+              }`}
+            >
               {activeFiscalYear.fullLabel} ({activeFiscalYear.label})
+              {isPastFiscalYear ? ' • विगत आर्थिक वर्ष' : ' • चालु आ.व.'}
             </span>
           </div>
           <h1 className="text-xl sm:text-2xl font-black text-slate-900 mt-1">
-            दैनिक खर्च तथा आम्दानी इन्ट्री (Daily Entry)
+            दैनिक तथा विगत आ.व. खर्च/आम्दानी प्रविष्टि (Voucher Entry)
           </h1>
           <p className="text-xs text-slate-500">
-            निर्माण साइटको खर्च, ठेकेदार भुक्तानी, सामग्री खरिद वा आम्दानी एकै ठाउँबाट इन्ट्री गर्नुहोस्
+            चालु वा विगत आर्थिक वर्षका खर्च, आम्दानी, बिल भुक्तानी तथा पेश्की कारोबारहरू प्रविष्टि गर्नुहोस्
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={() => navigate('/vouchers/daybook')}
-          className="inline-flex items-center gap-2 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-2xl text-xs font-bold transition cursor-pointer"
-        >
-          <Receipt className="w-4 h-4 text-blue-600" />
-          <span>दैनिक रोजनामचा (Day Book)</span>
-        </button>
+        <div className="flex flex-wrap items-center gap-2.5">
+          <button
+            type="button"
+            onClick={() => setShowBulkModal(true)}
+            className="inline-flex items-center gap-2 px-3.5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl text-xs font-bold shadow-xs transition cursor-pointer"
+          >
+            <FileSpreadsheet className="w-4 h-4" />
+            <span>📥 विगत आ.व. एकमुष्ठ आयात (Excel/CSV)</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => navigate('/vouchers/daybook')}
+            className="inline-flex items-center gap-2 px-3.5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-2xl text-xs font-bold transition cursor-pointer"
+          >
+            <Receipt className="w-4 h-4 text-blue-600" />
+            <span>दैनिक रोजनामचा (Day Book)</span>
+          </button>
+        </div>
       </div>
+
+      {/* Past Fiscal Year Active Notice Banner */}
+      {isPastFiscalYear && (
+        <div className="bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent p-4 rounded-2xl border border-amber-300 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-amber-950">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-amber-100 rounded-xl text-amber-700">
+              <Clock className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-xs font-black">
+                🕒 विगत आर्थिक वर्ष प्रविष्टि सक्रिय छ: {activeFiscalYear.fullLabel} ({activeFiscalYear.label})
+              </p>
+              <p className="text-[11px] text-amber-800">
+                तपाईं विगत वर्षका कारोबार प्रविष्टि गर्दै हुनुहुन्छ। भौचर नं. स्वतः {activeFiscalYear.label.split('/')[0]} वर्ष अनुसार जारी हुनेछ।
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={handleResetToCurrentFY}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-xl text-xs font-bold transition shadow-xs cursor-pointer self-start sm:self-auto"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+            <span>चालु आ.व. ({currentFiscalYear}) मा फर्कनुहोस्</span>
+          </button>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left 2 Cols: The Main Fast Form */}
-        <form onSubmit={handleSubmit} className="lg:col-span-2 space-y-6 bg-white p-6 sm:p-8 rounded-3xl border border-slate-200/90 shadow-xs">
+        <form onSubmit={(e) => handleSubmit(e, false)} className="lg:col-span-2 space-y-6 bg-white p-6 sm:p-8 rounded-3xl border border-slate-200/90 shadow-xs">
           {/* 1. Transaction Type: Expense vs Inflow */}
           <div className="space-y-2">
             <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
@@ -209,7 +458,7 @@ export default function VoucherEntry() {
             <div className="grid grid-cols-2 gap-3">
               <button
                 type="button"
-                onClick={() => setFormData({ ...formData, voucher_type: 'payment' })}
+                onClick={() => setFormData({ ...formData, voucher_type: 'payment', category_id: '' })}
                 className={`py-3 px-4 rounded-2xl font-black text-xs flex items-center justify-center gap-2 transition cursor-pointer border ${
                   formData.voucher_type === 'payment'
                     ? 'bg-red-50 text-red-700 border-red-300 shadow-xs'
@@ -222,7 +471,7 @@ export default function VoucherEntry() {
 
               <button
                 type="button"
-                onClick={() => setFormData({ ...formData, voucher_type: 'receipt' })}
+                onClick={() => setFormData({ ...formData, voucher_type: 'receipt', category_id: '' })}
                 className={`py-3 px-4 rounded-2xl font-black text-xs flex items-center justify-center gap-2 transition cursor-pointer border ${
                   formData.voucher_type === 'receipt'
                     ? 'bg-emerald-50 text-emerald-800 border-emerald-300 shadow-xs'
@@ -230,17 +479,35 @@ export default function VoucherEntry() {
                 }`}
               >
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-                <span>🟢 आम्दानी / रकम प्राप्ति (Money Inflow)</span>
+                <span>🟢 आम्दानी / रकम प्राप्ति (Money Inflow / Receipt)</span>
               </button>
             </div>
           </div>
 
-          {/* 2. Date & Fiscal Year & Site Row */}
+          {/* 2. Fiscal Year, BS Date & Site Row */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {/* Fiscal Year Quick Selector */}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                आर्थिक वर्ष (Fiscal Year) *
+              </label>
+              <select
+                value={activeFiscalYear.label}
+                onChange={(e) => handleFiscalYearSelect(e.target.value)}
+                className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none"
+              >
+                {getFiscalYearList().map((fy) => (
+                  <option key={fy.value} value={fy.value}>
+                    {fy.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             {/* BS Date */}
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">
-                मिति (Nepali Date BS) *
+                कारोबार मिति (Nepali Date BS) *
               </label>
               <div className="relative">
                 <input
@@ -257,19 +524,6 @@ export default function VoucherEntry() {
               <p className="text-[10px] text-slate-500 font-semibold mt-1">
                 {formatBSDate(formData.voucher_date_bs, 'np')}
               </p>
-            </div>
-
-            {/* Aarthik Barsha (Auto-calculated) */}
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
-                आर्थिक वर्ष (Fiscal Year)
-              </label>
-              <div className="py-2.5 px-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs font-bold text-emerald-800 flex items-center justify-between">
-                <span>{activeFiscalYear.fullLabel}</span>
-                <span className="font-mono text-[10px] bg-emerald-200/60 px-1.5 py-0.5 rounded text-emerald-900">
-                  {activeFiscalYear.label}
-                </span>
-              </div>
             </div>
 
             {/* Site / Project */}
@@ -296,10 +550,12 @@ export default function VoucherEntry() {
 
           {/* 3. Category & Party Row */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* Category */}
+            {/* Dynamic Category (Expense vs Income) */}
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">
-                खर्चको शीर्षक (Expense Category) *
+                {formData.voucher_type === 'receipt'
+                  ? 'आम्दानीको शीर्षक (Income Category) *'
+                  : 'खर्चको शीर्षक (Expense Category) *'}
               </label>
               <select
                 name="category_id"
@@ -308,18 +564,20 @@ export default function VoucherEntry() {
                 className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none"
               >
                 <option value="">-- शीर्षक छान्नुहोस् (Select Category) --</option>
-                {categories.map((c) => (
+                {visibleCategories.map((c) => (
                   <option key={c.id} value={c.id}>
-                    {c.parent_id ? `↳ ${c.name} (${c.name_np || ''})` : `📁 ${c.name}`}
+                    {c.parent_id ? `↳ ${c.name} (${c.name_np || ''})` : `📁 ${c.name} (${c.name_np || ''})`}
                   </option>
                 ))}
               </select>
             </div>
 
-            {/* Party */}
+            {/* Dynamic Party (Payer vs Payee) */}
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">
-                सम्बन्धित पार्टी / ठेकेदार / सप्लायर्स (Party)
+                {formData.voucher_type === 'receipt'
+                  ? 'रकम भुक्तान गर्ने पार्टी / ग्राहक / साझेदार (Client / Payer)'
+                  : 'सम्बन्धित पार्टी / ठेकेदार / सप्लायर्स (Payee Party)'}
               </label>
               <select
                 name="party_id"
@@ -345,6 +603,7 @@ export default function VoucherEntry() {
                   रकम (Gross Amount NPR) *
                 </label>
                 <input
+                  ref={amountInputRef}
                   type="number"
                   step="0.01"
                   name="gross_amount"
@@ -359,7 +618,9 @@ export default function VoucherEntry() {
               {/* TDS Selector */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
-                  TDS करकट्टी (TDS Rate)
+                  {formData.voucher_type === 'receipt'
+                    ? 'TDS कट्टी (TDS by Client)'
+                    : 'TDS करकट्टी (TDS Rate)'}
                 </label>
                 <select
                   name="tds_percent"
@@ -369,7 +630,8 @@ export default function VoucherEntry() {
                 >
                   <option value="0">0% (कुनै करकट्टी छैन)</option>
                   <option value="1.5">1.5% (ठेक्का / निर्माण TDS)</option>
-                  <option value="10">10% (घरभाडा / परामर्श)</option>
+                  <option value="5">5% (परामर्श / सेवा TDS)</option>
+                  <option value="10">10% (घरभाडा TDS)</option>
                   <option value="15">15% (कम्पनी अडिट / सेवा)</option>
                 </select>
                 {tdsAmount > 0 && (
@@ -382,7 +644,7 @@ export default function VoucherEntry() {
               {/* Net Payable Display */}
               <div>
                 <label className="block text-xs font-black text-blue-900 mb-1">
-                  खुद भुक्तानी (Net Amount)
+                  {formData.voucher_type === 'receipt' ? 'खुद प्राप्त रकम (Net Received)' : 'खुद भुक्तानी (Net Amount)'}
                 </label>
                 <div className="px-3 py-2.5 bg-blue-50 border border-blue-200 rounded-xl text-sm font-mono font-black text-blue-800">
                   {formatNPR(netAmount)}
@@ -401,27 +663,50 @@ export default function VoucherEntry() {
             )}
           </div>
 
-          {/* 5. Payment Mode (Cash vs Bank Audit Details) */}
+          {/* 5. Account & Payment Mode */}
           <div className="space-y-3 bg-slate-50/70 p-4 rounded-2xl border border-slate-200">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <label className="text-xs font-bold text-slate-800 uppercase tracking-wider">
-                भुक्तानी माध्यम (Payment Mode & Details) *
-              </label>
-              <div className="flex items-center gap-2">
-                {['cash', 'bank_transfer', 'cheque'].map((mode) => (
-                  <button
-                    key={mode}
-                    type="button"
-                    onClick={() => setFormData({ ...formData, payment_mode: mode })}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold capitalize transition cursor-pointer border ${
-                      formData.payment_mode === mode
-                        ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
-                        : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
-                    }`}
-                  >
-                    {mode === 'cash' ? '💵 नगद (Cash)' : mode === 'cheque' ? '📑 चेक (Cheque)' : '🏦 बैंक ट्रान्सफर'}
-                  </button>
-                ))}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-800 mb-1">
+                  {formData.voucher_type === 'receipt'
+                    ? 'रकम जम्मा भएको खाता / बैंक (Deposit Account) *'
+                    : 'भुक्तानी दिइएको खाता / बैंक (Paid From Account) *'}
+                </label>
+                <select
+                  name="account_id"
+                  value={formData.account_id}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:ring-2 focus:ring-blue-500 outline-none"
+                  required
+                >
+                  {accounts.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      🏦 {a.account_name} ({a.account_type?.toUpperCase()})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-800 mb-1">
+                  भुक्तानी माध्यम (Mode) *
+                </label>
+                <div className="flex items-center gap-2">
+                  {['cash', 'bank_transfer', 'cheque'].map((mode) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      onClick={() => setFormData({ ...formData, payment_mode: mode })}
+                      className={`flex-1 py-2 rounded-xl text-xs font-bold capitalize transition cursor-pointer border ${
+                        formData.payment_mode === mode
+                          ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                          : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                      }`}
+                    >
+                      {mode === 'cash' ? '💵 नगद' : mode === 'cheque' ? '📑 चेक' : '🏦 ट्रान्सफर'}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
 
@@ -430,7 +715,7 @@ export default function VoucherEntry() {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-slate-200">
                 <div>
                   <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                    रकम बुझ्ने व्यक्तिको नाम (Receiver) *
+                    रकम बुझ्ने व्यक्तिको नाम (Receiver)
                   </label>
                   <div className="relative">
                     <input
@@ -482,7 +767,7 @@ export default function VoucherEntry() {
               <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 pt-2 border-t border-slate-200">
                 <div>
                   <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                    कुन बैंकबाट (Bank Name) *
+                    कुन बैंकबाट (Bank Name)
                   </label>
                   <select
                     name="bank_name"
@@ -552,7 +837,11 @@ export default function VoucherEntry() {
               rows={2}
               value={formData.narration}
               onChange={handleChange}
-              placeholder="e.g. १५० बोरा सिमेन्ट र २ टन रड खरिद गरिएको / पोखरा साइट फाउण्डेसन ढलान भुक्तानी..."
+              placeholder={
+                formData.voucher_type === 'receipt'
+                  ? 'e.g. रनिङ बिल नं ३ भुक्तानी / पेश्की रकम / कबाडी बिक्री...'
+                  : 'e.g. १५० बोरा सिमेन्ट र २ टन रड खरिद गरिएको / पोखरा साइट फाउण्डेसन ढलान भुक्तानी...'
+              }
               className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none"
               required
             />
@@ -569,7 +858,7 @@ export default function VoucherEntry() {
                 name="bill_no"
                 value={formData.bill_no}
                 onChange={handleChange}
-                placeholder="e.g. INV-2083-45"
+                placeholder="e.g. INV-2081-45"
                 className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none"
               />
             </div>
@@ -589,15 +878,25 @@ export default function VoucherEntry() {
             </div>
           </div>
 
-          {/* Submit Button */}
-          <div className="pt-2">
+          {/* Continuous & Standard Entry Buttons */}
+          <div className="pt-2 grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <button
+              type="button"
+              disabled={loading}
+              onClick={(e) => handleSubmit(e, true)}
+              className="py-3.5 px-4 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white rounded-2xl font-black text-xs sm:text-sm shadow-md shadow-emerald-600/20 transition cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
+            >
+              <ListPlus className="w-4 h-4" />
+              <span>{loading ? 'सुरक्षित हुँदैछ...' : '💾 सुरक्षित गरी अर्को थप्नुहोस् (Save & Add Next)'}</span>
+            </button>
+
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3.5 px-6 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white rounded-2xl font-black text-sm shadow-md shadow-blue-500/25 transition cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
+              className="py-3.5 px-4 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white rounded-2xl font-black text-xs sm:text-sm shadow-md shadow-blue-500/25 transition cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
             >
-              <CheckCircle2 className="w-5 h-5" />
-              <span>{loading ? 'इन्ट्री सुरक्षित हुँदैछ...' : 'भौचर सुरक्षित गर्नुहोस् (Save & Post Entry)'}</span>
+              <CheckCircle2 className="w-4 h-4" />
+              <span>{loading ? 'सुरक्षित हुँदैछ...' : '✅ भौचर सुरक्षित गर्नुहोस् (Save Voucher)'}</span>
             </button>
           </div>
         </form>
@@ -698,7 +997,7 @@ export default function VoucherEntry() {
                   </div>
                 )}
                 <div className="flex justify-between text-xs font-black text-slate-900 border-t border-slate-200 pt-1">
-                  <span>Net Payable:</span>
+                  <span>{formData.voucher_type === 'receipt' ? 'Net Received:' : 'Net Payable:'}</span>
                   <span className="font-mono text-blue-700">{formatNPR(netAmount)}</span>
                 </div>
               </div>
@@ -711,7 +1010,7 @@ export default function VoucherEntry() {
                 </div>
                 <div>
                   <div className="border-b border-slate-300 mb-1 pb-4" />
-                  <span>बुझ्ने (Received By)</span>
+                  <span>{formData.voucher_type === 'receipt' ? 'दाखिला गर्ने' : 'बुझ्ने (Receiver)'}</span>
                 </div>
                 <div>
                   <div className="border-b border-slate-300 mb-1 pb-4" />
@@ -726,6 +1025,161 @@ export default function VoucherEntry() {
           </div>
         </div>
       </div>
+
+      {/* ========================================================= */}
+      {/* Bulk Past-Year Data Import Modal                          */}
+      {/* ========================================================= */}
+      <Modal
+        isOpen={showBulkModal}
+        onClose={() => setShowBulkModal(false)}
+        title="📥 विगत आर्थिक वर्षको एकमुष्ठ खर्च/आम्दानी आयात (Bulk Import Past Records)"
+        size="xl"
+      >
+        <div className="space-y-5">
+          {/* Instructions and Template Download */}
+          <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h4 className="text-xs font-black text-slate-900">
+                एक्सेल वा CSV फाइलबाट एकमुष्ठ भौचर प्रविष्टि गर्नुहोस्
+              </h4>
+              <p className="text-[11px] text-slate-500">
+                विगत आर्थिक वर्ष (२०८१/८२, २०८०/८१ आदि) को सम्पूर्ण खर्च तथा आम्दानी रेकर्ड एकै क्लिकमा आयात गर्न मिल्छ।
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={downloadSampleCSV}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition shadow-xs cursor-pointer self-start sm:self-auto shrink-0"
+            >
+              <Download className="w-4 h-4" />
+              <span>नमुना CSV डाउनलोड (Download Template)</span>
+            </button>
+          </div>
+
+          {/* File Upload or Text Paste */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-slate-700">
+                CSV फाइल छान्नुहोस् वा तल एक्सेलबाट सिधै पेस्ट (Paste) गर्नुहोस्:
+              </label>
+              <label className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition cursor-pointer border border-slate-300">
+                <Upload className="w-3.5 h-3.5" />
+                <span>CSV फाइल अपलोड</span>
+                <input
+                  type="file"
+                  accept=".csv,text/csv"
+                  onChange={handleBulkFileChange}
+                  className="hidden"
+                />
+              </label>
+            </div>
+
+            <textarea
+              rows={5}
+              value={bulkText}
+              onChange={(e) => {
+                setBulkText(e.target.value);
+                parseCSVRows(e.target.value);
+              }}
+              placeholder="Date_BS,Type,Project_Name,Category_Name,Party_Name,Account_Name,Gross_Amount,TDS_Percent,Narration,Bill_No,Payment_Mode&#10;2081-05-10,payment,Pokhara Bridge Project,Cement,Shree Ram Hardware,Main Cash Account,45000,0,Purchase of 50 bags OPC cement,INV-102,cash&#10;2081-06-15,receipt,Pokhara Bridge Project,Client Running Bill / Invoice Payment,Department of Roads,Global IME Bank A/C,250000,1.5,Running bill #01 payment received,RB-01,bank_transfer"
+              className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none"
+            />
+          </div>
+
+          {/* Parsed Rows Preview */}
+          {parsedBulkRows.length > 0 && (
+            <div className="space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-3 bg-blue-50 p-3.5 rounded-xl border border-blue-200 text-xs">
+                <div className="font-bold text-blue-900">
+                  कुल प्रविष्टि संख्या: <span className="font-mono font-black">{parsedBulkRows.length} वटा</span>
+                </div>
+                <div className="flex items-center gap-4 text-[11px]">
+                  <span className="text-red-700 font-bold">
+                    कुल खर्च (Debit): {formatNPR(bulkTotalPayment)}
+                  </span>
+                  <span className="text-emerald-700 font-bold">
+                    कुल आम्दानी (Credit): {formatNPR(bulkTotalReceipt)}
+                  </span>
+                  <span className="text-blue-800 font-black">
+                    खुद रकम (Net): {formatNPR(bulkTotalReceipt - bulkTotalPayment)}
+                  </span>
+                </div>
+              </div>
+
+              <div className="max-h-60 overflow-y-auto border border-slate-200 rounded-xl">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-100 text-slate-700 font-bold uppercase text-[10px] sticky top-0">
+                    <tr>
+                      <th className="p-2.5">#</th>
+                      <th className="p-2.5">मिति (BS)</th>
+                      <th className="p-2.5">आ.व.</th>
+                      <th className="p-2.5">प्रकार</th>
+                      <th className="p-2.5">आयोजना</th>
+                      <th className="p-2.5">शीर्षक</th>
+                      <th className="p-2.5">पार्टी</th>
+                      <th className="p-2.5 text-right">रकम (NPR)</th>
+                      <th className="p-2.5">विवरण</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200">
+                    {parsedBulkRows.map((r) => (
+                      <tr key={r.id} className={r.isValid ? 'hover:bg-slate-50' : 'bg-red-50/50'}>
+                        <td className="p-2.5 font-mono text-slate-400">{r.id}</td>
+                        <td className="p-2.5 font-mono font-bold text-slate-800">{r.voucher_date_bs}</td>
+                        <td className="p-2.5">
+                          <span className="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[10px] font-bold">
+                            {r.fiscal_year}
+                          </span>
+                        </td>
+                        <td className="p-2.5">
+                          <span
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                              r.voucher_type === 'receipt' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'
+                            }`}
+                          >
+                            {r.voucher_type === 'receipt' ? 'आम्दानी' : 'खर्च'}
+                          </span>
+                        </td>
+                        <td className="p-2.5 text-slate-700 font-medium truncate max-w-[120px]">{r.projectName}</td>
+                        <td className="p-2.5 text-slate-700 truncate max-w-[120px]">{r.categoryName}</td>
+                        <td className="p-2.5 text-slate-600 truncate max-w-[100px]">{r.partyName}</td>
+                        <td className="p-2.5 text-right font-mono font-bold text-slate-900">
+                          {formatNPR(r.gross_amount)}
+                        </td>
+                        <td className="p-2.5 text-slate-600 truncate max-w-[150px]">{r.narration}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Modal Action Buttons */}
+          <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-200">
+            <button
+              type="button"
+              onClick={() => setShowBulkModal(false)}
+              className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-xl text-xs font-bold transition cursor-pointer"
+            >
+              बन्द गर्नुहोस् (Cancel)
+            </button>
+            <button
+              type="button"
+              disabled={importingBulk || parsedBulkRows.filter((r) => r.isValid).length === 0}
+              onClick={handleImportAllVouchers}
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition shadow-md shadow-emerald-600/20 cursor-pointer disabled:opacity-50"
+            >
+              <CheckCircle2 className="w-4 h-4" />
+              <span>
+                {importingBulk
+                  ? 'भौचरहरू आयात हुँदैछ...'
+                  : `सबै (${parsedBulkRows.filter((r) => r.isValid).length}) भौचर प्रणालीमा सुरक्षित गर्नुहोस्`}
+              </span>
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

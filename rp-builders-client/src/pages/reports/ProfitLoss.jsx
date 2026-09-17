@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { TrendingUp, ArrowLeft, Printer, Building2 } from 'lucide-react';
 import { reportsAPI, projectsAPI } from '../../services/api';
 import { formatNPR } from '../../utils/helpers';
+import { getFiscalYearList } from '../../utils/nepaliDate';
 import Loader from '../../components/ui/Loader';
 import toast from 'react-hot-toast';
 
@@ -10,6 +11,7 @@ export default function ProfitLoss() {
   const [data, setData] = useState([]);
   const [projects, setProjects] = useState([]);
   const [projectId, setProjectId] = useState('');
+  const [fiscalYear, setFiscalYear] = useState('');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -19,7 +21,10 @@ export default function ProfitLoss() {
   const loadPnL = async () => {
     try {
       setLoading(true);
-      const res = await reportsAPI.profitLoss({ project_id: projectId || undefined });
+      const res = await reportsAPI.profitLoss({
+        project_id: projectId || undefined,
+        fiscal_year: fiscalYear || undefined,
+      });
       if (res.data.success) {
         setData(res.data.data || []);
       }
@@ -32,7 +37,7 @@ export default function ProfitLoss() {
 
   useEffect(() => {
     loadPnL();
-  }, [projectId]);
+  }, [projectId, fiscalYear]);
 
   return (
     <div className="space-y-6">
@@ -61,18 +66,34 @@ export default function ProfitLoss() {
       </div>
 
       {/* Filter */}
-      <div className="p-4 bg-white rounded-2xl border border-slate-200/80 shadow-xs flex items-center gap-3 no-print">
-        <span className="text-xs font-bold text-slate-700">Filter Site:</span>
-        <select
-          value={projectId}
-          onChange={(e) => setProjectId(e.target.value)}
-          className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium text-slate-700 focus:outline-none"
-        >
-          <option value="">All Construction Sites</option>
-          {projects.map((p) => (
-            <option key={p.id} value={p.id}>{p.project_name}</option>
-          ))}
-        </select>
+      <div className="p-4 bg-white rounded-2xl border border-slate-200/80 shadow-xs flex flex-wrap items-center gap-3 no-print">
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-bold text-slate-700">आर्थिक वर्ष (Fiscal Year):</span>
+          <select
+            value={fiscalYear}
+            onChange={(e) => setFiscalYear(e.target.value)}
+            className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-800 focus:outline-none"
+          >
+            <option value="">सबै आर्थिक वर्ष (All Fiscal Years)</option>
+            {getFiscalYearList().map((fy) => (
+              <option key={fy.value} value={fy.value}>{fy.label}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-bold text-slate-700">Filter Site:</span>
+          <select
+            value={projectId}
+            onChange={(e) => setProjectId(e.target.value)}
+            className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium text-slate-700 focus:outline-none"
+          >
+            <option value="">All Construction Sites</option>
+            {projects.map((p) => (
+              <option key={p.id} value={p.id}>{p.project_name}</option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {/* P&L Cards / Breakdown per site */}

@@ -75,20 +75,21 @@ export const partiesAPI = {
 
 // ─── Categories ────────────────────────────────────────
 export const categoriesAPI = {
-  getAll:  () => api.get('/categories'),
-  getFlat: () => api.get('/categories/flat'),
+  getAll:  (params) => api.get('/categories', { params }),
+  getFlat: (params) => api.get('/categories/flat', { params }),
 };
 
 // ─── Vouchers ──────────────────────────────────────────
 export const vouchersAPI = {
-  getAll:   (params) => api.get('/vouchers', { params }),
-  create:   (data)   => api.post('/vouchers', data),
-  getById:  (id)     => api.get(`/vouchers/${id}`),
-  update:   (id, d)  => api.put(`/vouchers/${id}`, d),
-  delete:   (id)     => api.delete(`/vouchers/${id}`),
-  approve:  (id)     => api.put(`/vouchers/${id}/approve`),
-  cancel:   (id)     => api.put(`/vouchers/${id}/cancel`),
-  daybook:  (params) => api.get('/vouchers/daybook', { params }),
+  getAll:     (params) => api.get('/vouchers', { params }),
+  create:     (data)   => api.post('/vouchers', data),
+  createBulk: (data)   => api.post('/vouchers/bulk', data),
+  getById:    (id)     => api.get(`/vouchers/${id}`),
+  update:     (id, d)  => api.put(`/vouchers/${id}`, d),
+  delete:     (id)     => api.delete(`/vouchers/${id}`),
+  approve:    (id)     => api.put(`/vouchers/${id}/approve`),
+  cancel:     (id)     => api.put(`/vouchers/${id}/cancel`),
+  daybook:    (params) => api.get('/vouchers/daybook', { params }),
 };
 
 // ─── Funds ─────────────────────────────────────────────

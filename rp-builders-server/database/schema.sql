@@ -189,6 +189,7 @@ CREATE TABLE expense_categories (
   icon VARCHAR(100),
   sort_order INT DEFAULT 0,
   is_active TINYINT(1) DEFAULT 1,
+  category_type VARCHAR(20) DEFAULT 'expense',
   FOREIGN KEY (parent_id) REFERENCES expense_categories(id)
 );
 
@@ -267,6 +268,19 @@ INSERT INTO expense_categories (code, name, name_np, parent_id, sort_order) VALU
 ('FTX-VAT', 'VAT Payment', 'मूल्य अभिवृद्धि कर', 25, 2),
 ('FTX-ROY', 'Royalty / Resource', 'रोयल्टी', 25, 3),
 ('FTX-REG', 'Registration Fee', 'दर्ता शुल्क', 25, 4);
+
+-- Income Categories
+INSERT INTO expense_categories (code, name, name_np, parent_id, icon, sort_order, category_type) VALUES
+('INC-BIL', 'Client Running Bill / Invoice Payment', 'रनिङ बिल भुक्तानी आम्दानी', NULL, 'file-text', 1, 'income'),
+('INC-ADV', 'Mobilization / Client Advance', 'मोबिलाइजेसन / क्लाइन्ट पेश्की', NULL, 'dollar-sign', 2, 'income'),
+('INC-RET', 'Retention Money Release', 'धरौटी रकम फिर्ता प्राप्ति', NULL, 'shield-check', 3, 'income'),
+('INC-FIN', 'Final Bill Settlement', 'अन्तिम बिल भुक्तानी', NULL, 'award', 4, 'income'),
+('INC-CAP', 'Owner / Partner Capital Investment', 'साझेदार पुँजी / लगानी', NULL, 'trending-up', 5, 'income'),
+('INC-LON', 'Bank / Project Loan Receipt', 'ऋण रकम प्राप्ति', NULL, 'landmark', 6, 'income'),
+('INC-SCR', 'Scrap & Material Resale', 'कबाडी / सामग्री बिक्री', NULL, 'trash-2', 7, 'income'),
+('INC-EQH', 'Equipment / Vehicle Hire Income', 'उपकरण भाडा आम्दानी', NULL, 'truck', 8, 'income'),
+('INC-INT', 'Bank Interest Received', 'बैंक ब्याज आम्दानी', NULL, 'percent', 9, 'income'),
+('INC-MSC', 'Miscellaneous Income', 'अन्य विविध आम्दानी', NULL, 'plus-circle', 10, 'income');
 
 -- ============================================================
 -- 6. BANKS & ACCOUNTS

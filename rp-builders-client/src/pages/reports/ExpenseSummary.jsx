@@ -4,6 +4,7 @@ import { PieChart, ArrowLeft, Printer, Filter, Calendar } from 'lucide-react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell } from 'recharts';
 import { reportsAPI, projectsAPI } from '../../services/api';
 import { formatNPR } from '../../utils/helpers';
+import { getFiscalYearList, getFiscalYearDateRange } from '../../utils/nepaliDate';
 import { useCompany } from '../../contexts/CompanyContext';
 import Loader from '../../components/ui/Loader';
 import toast from 'react-hot-toast';
@@ -15,6 +16,7 @@ export default function ExpenseSummary() {
   const [data, setData] = useState({ items: [], grandTotal: 0 });
   const [projects, setProjects] = useState([]);
   const [projectFilter, setProjectFilter] = useState('');
+  const [fiscalYear, setFiscalYear] = useState('');
   const [fromBs, setFromBs] = useState('');
   const [toBs, setToBs] = useState('');
   const [loading, setLoading] = useState(true);
@@ -23,11 +25,24 @@ export default function ExpenseSummary() {
     projectsAPI.getAll().then(res => setProjects(res.data.data || [])).catch(() => {});
   }, []);
 
+  const handleFYChange = (fy) => {
+    setFiscalYear(fy);
+    if (fy) {
+      const range = getFiscalYearDateRange(fy);
+      setFromBs(range.start);
+      setToBs(range.end);
+    } else {
+      setFromBs('');
+      setToBs('');
+    }
+  };
+
   const loadReport = async () => {
     try {
       setLoading(true);
       const res = await reportsAPI.expenseSummary({
         project_id: projectFilter || undefined,
+        fiscal_year: fiscalYear || undefined,
         from_date_bs: fromBs || undefined,
         to_date_bs: toBs || undefined,
       });
@@ -43,7 +58,7 @@ export default function ExpenseSummary() {
 
   useEffect(() => {
     loadReport();
-  }, [projectFilter, fromBs, toBs]);
+  }, [projectFilter, fiscalYear, fromBs, toBs]);
 
   return (
     <div className="space-y-6">
@@ -73,6 +88,17 @@ export default function ExpenseSummary() {
 
       {/* Filter Bar */}
       <div className="p-4 bg-white rounded-2xl border border-slate-200/80 shadow-xs flex flex-wrap items-center gap-3 no-print">
+        <select
+          value={fiscalYear}
+          onChange={(e) => handleFYChange(e.target.value)}
+          className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-800 focus:outline-none"
+        >
+          <option value="">सबै आर्थिक वर्ष (All FY)</option>
+          {getFiscalYearList().map((fy) => (
+            <option key={fy.value} value={fy.value}>{fy.label}</option>
+          ))}
+        </select>
+
         <select
           value={projectFilter}
           onChange={(e) => setProjectFilter(e.target.value)}

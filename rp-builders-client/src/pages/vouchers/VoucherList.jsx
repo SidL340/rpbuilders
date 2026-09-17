@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { vouchersAPI, projectsAPI, partiesAPI, categoriesAPI, accountsAPI } from '../../services/api';
 import { formatNPR, amountInWords } from '../../utils/helpers';
+import { getFiscalYearList } from '../../utils/nepaliDate';
 import { useCompany } from '../../contexts/CompanyContext';
 import Loader from '../../components/ui/Loader';
 import SearchInput from '../../components/ui/SearchInput';
@@ -24,6 +25,7 @@ export default function VoucherList() {
   const [status, setStatus] = useState('');
   const [type, setType] = useState('');
   const [projectId, setProjectId] = useState('');
+  const [fiscalYear, setFiscalYear] = useState('');
   const [fromDateBs, setFromDateBs] = useState('');
   const [toDateBs, setToDateBs] = useState('');
 
@@ -55,6 +57,7 @@ export default function VoucherList() {
         status,
         type,
         project_id: projectId || undefined,
+        fiscal_year: fiscalYear || undefined,
         from_date_bs: fromDateBs || undefined,
         to_date_bs: toDateBs || undefined,
         page,
@@ -74,7 +77,7 @@ export default function VoucherList() {
 
   useEffect(() => {
     loadVouchers(1);
-  }, [search, status, type, projectId, fromDateBs, toDateBs]);
+  }, [search, status, type, projectId, fiscalYear, fromDateBs, toDateBs]);
 
   const handleApprove = async (id) => {
     try {
@@ -213,6 +216,17 @@ export default function VoucherList() {
           <option value="approved">Approved</option>
           <option value="draft">Draft (Pending)</option>
           <option value="cancelled">Cancelled</option>
+        </select>
+
+        <select
+          value={fiscalYear}
+          onChange={(e) => setFiscalYear(e.target.value)}
+          className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-800 focus:outline-none"
+        >
+          <option value="">सबै आर्थिक वर्ष (All FY)</option>
+          {getFiscalYearList().map((fy) => (
+            <option key={fy.value} value={fy.value}>{fy.label}</option>
+          ))}
         </select>
 
         <select

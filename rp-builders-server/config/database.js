@@ -190,6 +190,34 @@ if (hasCloudMySQL) {
           }
         });
 
+        const catCols = db.prepare("PRAGMA table_info(expense_categories)").all().map(c => c.name);
+        if (!catCols.includes('category_type')) {
+          console.log('Migrating: Adding column category_type to expense_categories table...');
+          db.exec("ALTER TABLE expense_categories ADD COLUMN category_type TEXT DEFAULT 'expense'");
+        }
+
+        const incomeCategories = [
+          { code: 'INC-BIL', name: 'Client Running Bill / Invoice Payment', name_np: 'रनिङ बिल भुक्तानी आम्दानी', icon: 'file-text', sort_order: 1 },
+          { code: 'INC-ADV', name: 'Mobilization / Client Advance', name_np: 'मोबिलाइजेसन / क्लाइन्ट पेश्की', icon: 'dollar-sign', sort_order: 2 },
+          { code: 'INC-RET', name: 'Retention Money Release', name_np: 'धरौटी रकम फिर्ता प्राप्ति', icon: 'shield-check', sort_order: 3 },
+          { code: 'INC-FIN', name: 'Final Bill Settlement', name_np: 'अन्तिम बिल भुक्तानी', icon: 'award', sort_order: 4 },
+          { code: 'INC-CAP', name: 'Owner / Partner Capital Investment', name_np: 'साझेदार पुँजी / लगानी', icon: 'trending-up', sort_order: 5 },
+          { code: 'INC-LON', name: 'Bank / Project Loan Receipt', name_np: 'ऋण रकम प्राप्ति', icon: 'landmark', sort_order: 6 },
+          { code: 'INC-SCR', name: 'Scrap & Material Resale', name_np: 'कबाडी / सामग्री बिक्री', icon: 'trash-2', sort_order: 7 },
+          { code: 'INC-EQH', name: 'Equipment / Vehicle Hire Income', name_np: 'उपकरण भाडा आम्दानी', icon: 'truck', sort_order: 8 },
+          { code: 'INC-INT', name: 'Bank Interest Received', name_np: 'बैंक ब्याज आम्दानी', icon: 'percent', sort_order: 9 },
+          { code: 'INC-MSC', name: 'Miscellaneous Income', name_np: 'अन्य विविध आम्दानी', icon: 'plus-circle', sort_order: 10 },
+        ];
+
+        const checkCat = db.prepare('SELECT id FROM expense_categories WHERE code = ?');
+        const insertCat = db.prepare('INSERT INTO expense_categories (code, name, name_np, parent_id, icon, sort_order, category_type) VALUES (?, ?, ?, NULL, ?, ?, ?)');
+
+        for (const cat of incomeCategories) {
+          if (!checkCat.get(cat.code)) {
+            insertCat.run(cat.code, cat.name, cat.name_np, cat.icon, cat.sort_order, 'income');
+          }
+        }
+
         // Refresh Views
         db.exec(`
           DROP VIEW IF EXISTS v_voucher_summary;
@@ -211,6 +239,8 @@ if (hasCloudMySQL) {
             py.pan_no AS party_pan,
             v.category_id,
             ec.name AS category_name,
+            ec.name_np AS category_name_np,
+            ec.category_type,
             v.account_id,
             ca.account_name AS paid_from,
             v.payment_mode,
