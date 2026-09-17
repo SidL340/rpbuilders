@@ -28,10 +28,13 @@ api.interceptors.response.use(
   res => res,
   err => {
     if (err.response?.status === 401) {
-      localStorage.removeItem('rp_token');
-      localStorage.removeItem('rp_user');
-      if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
-        window.location.href = '/login';
+      const isLogin = err.config?.url?.includes('/auth/login');
+      if (!isLogin) {
+        localStorage.removeItem('rp_token');
+        localStorage.removeItem('rp_user');
+        if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
+          window.location.href = '/login';
+        }
       }
     }
     return Promise.reject(err);

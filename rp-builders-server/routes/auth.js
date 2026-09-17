@@ -8,8 +8,11 @@ const { authenticate } = require('../middleware/auth');
 // POST /api/auth/login
 router.post('/login', async (req, res) => {
   try {
-    const { username, password } = req.body;
-    if (!username || !password) {
+    const rawUsername = String(req.body.username || '').trim();
+    const rawPassword = String(req.body.password || '');
+    const cleanPassword = rawPassword.trim();
+
+    if (!rawUsername || !cleanPassword) {
       return res.status(400).json({ success: false, message: 'Username and password are required' });
     }
 
@@ -17,8 +20,8 @@ router.post('/login', async (req, res) => {
       `SELECT u.*, r.role_name, r.role_label 
        FROM users u 
        JOIN roles r ON u.role_id = r.id 
-       WHERE (u.username = ? OR u.email = ?) AND u.is_active = 1`,
-      [username, username]
+       WHERE (LOWER(u.username) = LOWER(?) OR LOWER(u.email) = LOWER(?) OR u.username = ?) AND u.is_active = 1`,
+      [rawUsername, rawUsername, rawUsername]
     );
 
     if (users.length === 0) {
@@ -26,7 +29,9 @@ router.post('/login', async (req, res) => {
     }
 
     const user = users[0];
-    const isMatch = await bcrypt.compare(password, user.password_hash);
+    const isMatch = (await bcrypt.compare(rawPassword, user.password_hash)) ||
+                    (cleanPassword !== rawPassword && (await bcrypt.compare(cleanPassword, user.password_hash)));
+
     if (!isMatch) {
       return res.status(401).json({ success: false, message: 'Invalid username or password' });
     }

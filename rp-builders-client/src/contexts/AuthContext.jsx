@@ -13,16 +13,19 @@ export function AuthProvider({ children }) {
   const login = async (username, password) => {
     setLoading(true);
     try {
-      const { data } = await authAPI.login({ username, password });
-      if (data.success) {
+      const cleanUser = String(username || '').trim();
+      const cleanPass = String(password || '').trim();
+      const { data } = await authAPI.login({ username: cleanUser, password: cleanPass });
+      if (data.success && data.data?.token) {
         localStorage.setItem('rp_token', data.data.token);
         localStorage.setItem('rp_user', JSON.stringify(data.data.user));
         setUser(data.data.user);
-        return { success: true };
+        return { success: true, user: data.data.user };
       }
-      return { success: false, message: data.message };
+      return { success: false, message: data.message || 'Login failed' };
     } catch (err) {
-      return { success: false, message: err?.response?.data?.message || 'Login failed' };
+      const msg = err?.response?.data?.message || err?.message || 'Invalid username or password';
+      return { success: false, message: msg };
     } finally {
       setLoading(false);
     }

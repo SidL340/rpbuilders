@@ -36,12 +36,14 @@ import NotFound       from './pages/NotFound';
 
 function PrivateRoute({ children }) {
   const { user } = useAuth();
-  return user ? children : <Navigate to="/login" replace />;
+  const hasToken = typeof window !== 'undefined' && Boolean(localStorage.getItem('rp_token'));
+  return (user || hasToken) ? children : <Navigate to="/login" replace />;
 }
 
 function PublicRoute({ children }) {
   const { user } = useAuth();
-  return !user ? children : <Navigate to="/" replace />;
+  const hasToken = typeof window !== 'undefined' && Boolean(localStorage.getItem('rp_token'));
+  return (!user && !hasToken) ? children : <Navigate to="/" replace />;
 }
 
 export default function App() {

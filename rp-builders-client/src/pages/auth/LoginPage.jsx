@@ -15,18 +15,25 @@ export default function LoginPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!username || !password) {
+    const cleanUser = String(username || '').trim();
+    const cleanPass = String(password || '').trim();
+
+    if (!cleanUser || !cleanPass) {
       toast.error('Please enter both username and password');
       return;
     }
 
     try {
       setLoading(true);
-      await login(username, password);
+      const res = await login(cleanUser, cleanPass);
+      if (!res || !res.success) {
+        toast.error(res?.message || 'Invalid username or password');
+        return;
+      }
       toast.success('Welcome to R.P. Builders Portal!');
-      navigate('/');
+      window.location.href = '/';
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Invalid username or password');
+      toast.error(err.response?.data?.message || err?.message || 'Invalid username or password');
     } finally {
       setLoading(false);
     }
@@ -86,6 +93,9 @@ export default function LoginPage() {
                   type="text"
                   required
                   autoComplete="username"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck="false"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   placeholder="Enter your username"
