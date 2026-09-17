@@ -4,18 +4,12 @@
 -- Created: 2082 BS (2025 AD)
 -- ============================================================
 
-DROP DATABASE IF EXISTS rp_builders_db;
-CREATE DATABASE IF NOT EXISTS rp_builders_db
-  CHARACTER SET utf8mb4
-  COLLATE utf8mb4_unicode_ci;
-
-USE rp_builders_db;
-
+-- Cloud & Local Safe: Create tables within the currently connected database
 -- ============================================================
 -- 1. SYSTEM / SETTINGS
 -- ============================================================
 
-CREATE TABLE company_settings (
+CREATE TABLE IF NOT EXISTS company_settings (
   id INT PRIMARY KEY AUTO_INCREMENT,
   company_name VARCHAR(200) DEFAULT 'R.P. Builders Pvt Ltd',
   company_name_np VARCHAR(200),
@@ -24,6 +18,7 @@ CREATE TABLE company_settings (
   company_email VARCHAR(200),
   company_pan VARCHAR(50),
   company_logo_path VARCHAR(500),
+  company_logo_data LONGTEXT,
   fiscal_year_start VARCHAR(20) DEFAULT '2082-04-01',
   currency VARCHAR(10) DEFAULT 'NPR',
   date_format ENUM('BS', 'AD') DEFAULT 'BS',
@@ -366,12 +361,13 @@ CREATE TABLE fund_receipts (
 -- 8. VOUCHERS (Day Book — Main Transaction Table)
 -- ============================================================
 
-CREATE TABLE vouchers (
+CREATE TABLE IF NOT EXISTS vouchers (
   id INT PRIMARY KEY AUTO_INCREMENT,
   voucher_no VARCHAR(50) NOT NULL UNIQUE COMMENT 'PV-2082-0001',
   voucher_type ENUM('payment','receipt','journal','contra','debit_note','credit_note') NOT NULL,
   voucher_date_bs VARCHAR(20) NOT NULL,
   voucher_date_ad DATE NOT NULL,
+  fiscal_year VARCHAR(20) DEFAULT '2083/84',
 
   -- Linking
   project_id INT NULL COMMENT 'NULL = office/general expense',
@@ -381,7 +377,13 @@ CREATE TABLE vouchers (
 
   -- Payment details
   payment_mode ENUM('cash','cheque','bank_transfer','online','multiple') DEFAULT 'cash',
+  bank_name VARCHAR(200),
   cheque_no VARCHAR(100),
+  cheque_date_bs VARCHAR(20),
+  bank_voucher_no VARCHAR(100),
+  cash_receiver_name VARCHAR(200),
+  cash_receiver_phone VARCHAR(50),
+  cash_handed_by VARCHAR(200),
   reference_no VARCHAR(200),
 
   -- Category
