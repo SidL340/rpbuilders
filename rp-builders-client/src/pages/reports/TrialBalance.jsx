@@ -3,10 +3,13 @@ import { Link } from 'react-router-dom';
 import { Scale, ArrowLeft, Printer, CheckCircle, AlertTriangle } from 'lucide-react';
 import { reportsAPI } from '../../services/api';
 import { formatNPR } from '../../utils/helpers';
+import { useCompany } from '../../contexts/CompanyContext';
+import { todayBS, formatBSDate } from '../../utils/nepaliDate';
 import Loader from '../../components/ui/Loader';
 import toast from 'react-hot-toast';
 
 export default function TrialBalance() {
+  const { company } = useCompany();
   const [data, setData] = useState({ accounts: [], totalDebit: 0, totalCredit: 0, isBalanced: true });
   const [loading, setLoading] = useState(true);
 
@@ -77,9 +80,29 @@ export default function TrialBalance() {
 
       {/* Trial Balance Table */}
       <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden print:border-none print:shadow-none">
-        <div className="hidden print:block p-6 text-center border-b border-slate-300">
-          <h1 className="text-2xl font-black text-slate-900">R.P. BUILDERS PVT. LTD.</h1>
-          <h2 className="text-sm font-bold mt-1 uppercase underline">OFFICIAL ACCOUNTING TRIAL BALANCE</h2>
+        <div className="hidden print:block text-center border-b-2 border-slate-900 pb-4 mb-4 font-sans print-header">
+          <div className="flex items-center justify-center gap-4 mb-2">
+            <img
+              src={company?.company_logo_data || '/logo.png'}
+              alt={company?.company_name || 'Logo'}
+              onError={(e) => { e.currentTarget.src = '/logo.png'; }}
+              className="w-16 h-16 object-contain rounded-lg shrink-0"
+            />
+            <div className="text-left">
+              <h2 className="text-2xl font-black uppercase text-slate-900 tracking-tight leading-none">
+                {company?.company_name || 'R.P. BUILDERS PVT. LTD.'}
+              </h2>
+              <p className="text-xs text-slate-700 mt-0.5">{company?.company_name_np || 'आर. पी. विल्डर्स प्रा. लि.'}</p>
+              <p className="text-[10px] text-slate-500">{company?.company_address || company?.address || 'Kathmandu, Nepal'} • Phone: {company?.company_phone || '9800000000'} • PAN: {company?.company_pan || '601234567'}</p>
+            </div>
+          </div>
+          <h3 className="text-lg font-black mt-2 underline uppercase tracking-wide">
+            सन्तुलन परीक्षण खाता (OFFICIAL ACCOUNTING TRIAL BALANCE)
+          </h3>
+          <div className="flex justify-between text-xs mt-2 font-semibold text-slate-800 border-t border-slate-300 pt-2">
+            <span>मिति: <strong>{formatBSDate(todayBS(), 'np')} ({todayBS()} BS)</strong></span>
+            <span>अवस्था: <strong>{data.isBalanced ? 'सन्तुलित (Balanced)' : 'असन्तुलित (Unbalanced)'}</strong></span>
+          </div>
         </div>
 
         <div className="overflow-x-auto">
@@ -131,6 +154,22 @@ export default function TrialBalance() {
               </tfoot>
             </table>
           )}
+        </div>
+      </div>
+
+      {/* Print Signature Section */}
+      <div className="hidden print:grid grid-cols-3 gap-6 pt-16 text-center text-xs font-bold text-slate-800 border-t-2 border-slate-800 mt-12 print-signature-block">
+        <div>
+          <div className="border-b border-slate-400 mb-2 pb-6" />
+          <span>तयार गर्ने / लेखापाल<br />(Accountant)</span>
+        </div>
+        <div>
+          <div className="border-b border-slate-400 mb-2 pb-6" />
+          <span>आन्तरिक लेखापरीक्षक<br />(Internal Auditor)</span>
+        </div>
+        <div>
+          <div className="border-b border-slate-400 mb-2 pb-6" />
+          <span>प्रबन्ध निर्देशक<br />(Managing Director)</span>
         </div>
       </div>
     </div>

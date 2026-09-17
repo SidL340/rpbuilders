@@ -5,7 +5,7 @@ import {
   XCircle, Printer, Download, Edit3, Trash2
 } from 'lucide-react';
 import { vouchersAPI, projectsAPI, partiesAPI, categoriesAPI, accountsAPI } from '../../services/api';
-import { formatNPR } from '../../utils/helpers';
+import { formatNPR, amountInWords } from '../../utils/helpers';
 import { useCompany } from '../../contexts/CompanyContext';
 import Loader from '../../components/ui/Loader';
 import SearchInput from '../../components/ui/SearchInput';
@@ -344,53 +344,164 @@ export default function VoucherList() {
         <Modal
           isOpen={!!selectedVoucher}
           onClose={() => setSelectedVoucher(null)}
-          title={`Voucher Slip — ${selectedVoucher.voucher_no}`}
-          size="md"
+          title={`भौचर रसिद — ${selectedVoucher.voucher_no}`}
+          size="lg"
         >
-          <div className="space-y-4 text-xs font-sans">
-            <div className="text-center pb-3 border-b border-slate-200">
-              {company?.company_logo_data ? (
+          <div className="space-y-4 text-xs font-sans print:p-0">
+            {/* Header with official logo & company identity */}
+            <div className="text-center pb-3 border-b-2 border-slate-900">
+              <div className="flex items-center justify-center gap-3 mb-2">
                 <img
-                  src={company.company_logo_data}
+                  src={company?.company_logo_data || '/logo.png'}
                   alt="Logo"
-                  className="h-10 max-w-[150px] object-contain mx-auto mb-1.5"
+                  onError={(e) => { e.currentTarget.src = '/logo.png'; }}
+                  className="w-14 h-14 object-contain rounded-lg shrink-0"
                 />
-              ) : null}
-              <h3 className="text-base font-black text-slate-900">{company?.company_name || 'R.P. BUILDERS PVT. LTD.'}</h3>
-              <p className="text-[10px] text-slate-500">{company?.address || 'Nepal'} • Official Accounting Voucher</p>
-            </div>
+                <div className="text-left">
+                  <h2 className="text-xl font-black uppercase text-slate-900 tracking-tight leading-none">
+                    {company?.company_name || 'R.P. BUILDERS PVT. LTD.'}
+                  </h2>
+                  <p className="text-xs text-slate-700 mt-0.5">{company?.company_name_np || 'आर. पी. विल्डर्स प्रा. लि.'}</p>
+                  <p className="text-[10px] text-slate-500">{company?.company_address || company?.address || 'Kathmandu, Nepal'} • Phone: {company?.company_phone || '9800000000'} • PAN: {company?.company_pan || '601234567'}</p>
+                </div>
+              </div>
 
-            <div className="grid grid-cols-2 gap-2 text-[11px]">
-              <div><strong>Voucher No:</strong> {selectedVoucher.voucher_no}</div>
-              <div><strong>Date:</strong> {selectedVoucher.voucher_date_bs} BS</div>
-              <div><strong>Project:</strong> {selectedVoucher.project_name || 'General Office'}</div>
-              <div><strong>Party/Payee:</strong> {selectedVoucher.party_name || 'Direct'}</div>
-              <div><strong>Category:</strong> {selectedVoucher.category_name}</div>
-              <div><strong>Payment Mode:</strong> {selectedVoucher.payment_mode}</div>
-            </div>
-
-            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
-              <strong>Narration:</strong>
-              <p className="mt-1 text-slate-700">{selectedVoucher.narration}</p>
-            </div>
-
-            <div className="text-right space-y-1 font-mono">
-              <div>Gross: {formatNPR(selectedVoucher.gross_amount)}</div>
-              {parseFloat(selectedVoucher.tds_amount) > 0 && (
-                <div className="text-red-600">TDS: -{formatNPR(selectedVoucher.tds_amount)}</div>
-              )}
-              <div className="text-base font-black text-slate-900 pt-1 border-t border-slate-200">
-                Net Amount: {formatNPR(selectedVoucher.net_amount)}
+              <div className="inline-block px-4 py-1 bg-slate-100 text-slate-900 border border-slate-300 font-bold uppercase text-xs rounded-full mt-1">
+                {selectedVoucher.voucher_type === 'payment' ? 'खर्च भुक्तानी भौचर (PAYMENT VOUCHER)' :
+                 selectedVoucher.voucher_type === 'receipt' ? 'रकम प्राप्ति रसिद (RECEIPT VOUCHER)' :
+                 selectedVoucher.voucher_type === 'journal' ? 'जर्नल भौचर (JOURNAL VOUCHER)' : 'कन्ट्रा भौचर (CONTRA VOUCHER)'}
               </div>
             </div>
 
-            <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">
+            {/* Voucher Details Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs border border-slate-200 p-3 bg-slate-50/50">
+              <div>
+                <span className="text-[10px] font-bold text-slate-500 uppercase block">भौचर नं. (Voucher No)</span>
+                <span className="font-mono font-bold text-blue-700 text-sm">{selectedVoucher.voucher_no}</span>
+              </div>
+              <div>
+                <span className="text-[10px] font-bold text-slate-500 uppercase block">मिति (Date BS)</span>
+                <span className="font-mono font-bold text-slate-900">{selectedVoucher.voucher_date_bs} BS</span>
+              </div>
+              <div>
+                <span className="text-[10px] font-bold text-slate-500 uppercase block">आर्थिक वर्ष (Fiscal Year)</span>
+                <span className="font-bold text-slate-900">{selectedVoucher.fiscal_year || '2083/84'}</span>
+              </div>
+              <div>
+                <span className="text-[10px] font-bold text-slate-500 uppercase block">अवस्था (Status)</span>
+                <span className="font-bold uppercase text-emerald-700">{selectedVoucher.status}</span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+              <div className="border border-slate-200 p-3">
+                <span className="text-[10px] font-bold text-slate-500 uppercase block mb-1">साइट / आयोजना (Project Site)</span>
+                <p className="font-bold text-slate-900">{selectedVoucher.project_name || '🏢 कार्यालय (Head Office)'}</p>
+                {selectedVoucher.project_code && (
+                  <p className="text-[10px] text-slate-500 font-mono mt-0.5">Code: {selectedVoucher.project_code}</p>
+                )}
+              </div>
+
+              <div className="border border-slate-200 p-3">
+                <span className="text-[10px] font-bold text-slate-500 uppercase block mb-1">पार्टी / बुझ्ने व्यक्ति (Payee / Party)</span>
+                <p className="font-bold text-slate-900">{selectedVoucher.party_name || 'Direct / Cash Payment'}</p>
+                {selectedVoucher.party_phone && (
+                  <p className="text-[10px] text-slate-500 font-mono mt-0.5">Phone: {selectedVoucher.party_phone}</p>
+                )}
+              </div>
+            </div>
+
+            <div className="border border-slate-200 p-3">
+              <span className="text-[10px] font-bold text-slate-500 uppercase block mb-1">खर्च शीर्षक तथा विवरण (Category & Narration)</span>
+              <p className="font-bold text-slate-800 text-xs mb-1">शीर्षक: {selectedVoucher.category_name || 'General'}</p>
+              <p className="text-slate-700">{selectedVoucher.narration}</p>
+              {selectedVoucher.bill_no && (
+                <p className="text-[10px] text-slate-500 font-mono mt-1">बिल / भर्पाई नं.: {selectedVoucher.bill_no}</p>
+              )}
+            </div>
+
+            {/* Payment Mode Audit Details */}
+            <div className="border border-slate-200 p-3 text-xs">
+              <span className="text-[10px] font-bold text-slate-500 uppercase block mb-1">भुक्तानी माध्यम (Payment Mode)</span>
+              <div className="flex flex-wrap gap-4">
+                <div>माध्यम: <strong className="capitalize">{selectedVoucher.payment_mode}</strong></div>
+                {selectedVoucher.payment_mode === 'cash' && selectedVoucher.cash_receiver_name && (
+                  <div>नगद बुझ्ने: <strong>{selectedVoucher.cash_receiver_name}</strong> {selectedVoucher.cash_receiver_phone ? `(${selectedVoucher.cash_receiver_phone})` : ''}</div>
+                )}
+                {selectedVoucher.payment_mode !== 'cash' && selectedVoucher.cheque_no && (
+                  <div>चेक नं.: <strong className="font-mono">{selectedVoucher.cheque_no}</strong> {selectedVoucher.bank_name ? `(${selectedVoucher.bank_name})` : ''}</div>
+                )}
+              </div>
+            </div>
+
+            {/* Financial Breakdown Table */}
+            <table className="w-full text-xs border-collapse">
+              <thead>
+                <tr className="bg-slate-100 text-slate-700 font-bold border border-slate-300">
+                  <th className="py-2 px-3 text-left">विवरण (Description)</th>
+                  <th className="py-2 px-3 text-right w-36">रकम (Amount NPR)</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr className="border border-slate-200">
+                  <td className="py-2 px-3">कुल रकम (Gross Amount)</td>
+                  <td className="py-2 px-3 text-right font-mono">{formatNPR(selectedVoucher.gross_amount)}</td>
+                </tr>
+                {parseFloat(selectedVoucher.tds_amount) > 0 && (
+                  <tr className="border border-slate-200 text-red-700">
+                    <td className="py-2 px-3">TDS कट्टी ({selectedVoucher.tds_percent}%)</td>
+                    <td className="py-2 px-3 text-right font-mono">-{formatNPR(selectedVoucher.tds_amount)}</td>
+                  </tr>
+                )}
+                <tr className="border-t-2 border-slate-900 bg-slate-50 font-black text-sm">
+                  <td className="py-2.5 px-3">खुद भुक्तानी / प्राप्ति (Net Amount)</td>
+                  <td className="py-2.5 px-3 text-right font-mono text-blue-900">{formatNPR(selectedVoucher.net_amount)}</td>
+                </tr>
+              </tbody>
+            </table>
+
+            {/* In Words */}
+            <div className="p-2.5 bg-slate-50 border border-slate-200 text-xs">
+              <span className="text-[10px] font-bold text-slate-500 uppercase block">अक्षरूपी (Amount in Words):</span>
+              <span className="font-bold text-slate-900 italic">{amountInWords(selectedVoucher.net_amount)}</span>
+            </div>
+
+            {/* Official Signatures */}
+            <div className="grid grid-cols-4 gap-4 pt-12 text-center text-[10px] font-bold text-slate-800 border-t border-slate-300 mt-6 print-signature-block">
+              <div>
+                <div className="border-b border-slate-400 mb-1 pb-4" />
+                <span>तयार गर्ने<br />(Prepared By)</span>
+              </div>
+              <div>
+                <div className="border-b border-slate-400 mb-1 pb-4" />
+                <span>जाँच गर्ने<br />(Checked By)</span>
+              </div>
+              <div>
+                <div className="border-b border-slate-400 mb-1 pb-4" />
+                <span>स्वीकृत गर्ने<br />(Approved By)</span>
+              </div>
+              <div>
+                <div className="border-b border-slate-400 mb-1 pb-4" />
+                <span>बुझिलिनेको दस्तखत<br />(Receiver's Signature)</span>
+              </div>
+            </div>
+
+            {/* Print button on modal footer (no-print) */}
+            <div className="flex justify-end gap-2 pt-4 border-t border-slate-100 no-print">
+              <button
+                type="button"
+                onClick={() => setSelectedVoucher(null)}
+                className="px-4 py-2 border border-slate-200 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-50"
+              >
+                बन्द गर्नुहोस् (Close)
+              </button>
               <button
                 type="button"
                 onClick={() => window.print()}
-                className="px-4 py-2 bg-slate-900 text-white rounded-xl text-xs font-bold"
+                className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm"
               >
-                Print Slip
+                <Printer className="w-4 h-4" />
+                <span>प्रिन्ट रसिद (Print Slip)</span>
               </button>
             </div>
           </div>

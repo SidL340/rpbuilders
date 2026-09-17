@@ -269,7 +269,7 @@ export default function DayBook() {
       </div>
 
       {/* Summary KPI Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 no-print">
         <div className="bg-white p-5 rounded-3xl border border-red-200 shadow-xs flex items-center gap-4">
           <div className="w-12 h-12 rounded-2xl bg-red-50 text-red-600 flex items-center justify-center font-bold">
             <TrendingDown className="w-6 h-6" />
@@ -314,24 +314,29 @@ export default function DayBook() {
       </div>
 
       {/* Printable Report Header */}
-      <div className="hidden print:block text-center border-b-2 border-slate-800 pb-4 mb-4">
-        <img
-          src={company?.company_logo_data || '/logo.png'}
-          alt={company?.company_name || 'Logo'}
-          onError={(e) => { e.currentTarget.src = '/logo.png'; }}
-          className="h-16 max-w-[200px] object-contain mx-auto mb-2"
-        />
-        <h2 className="text-xl font-black uppercase text-slate-900 tracking-tight">
-          {company?.company_name || 'R.P. BUILDERS PVT. LTD.'}
-        </h2>
-        <p className="text-xs text-slate-600">{company?.company_address || company?.address || 'Nepal'} • Construction & Engineering • PAN: {company?.company_pan || company?.pan_no || '601234567'}</p>
-        <h3 className="text-lg font-bold mt-2 underline">
+      <div className="hidden print:block text-center border-b-2 border-slate-900 pb-4 mb-4 font-sans print-header">
+        <div className="flex items-center justify-center gap-4 mb-2">
+          <img
+            src={company?.company_logo_data || '/logo.png'}
+            alt={company?.company_name || 'Logo'}
+            onError={(e) => { e.currentTarget.src = '/logo.png'; }}
+            className="w-16 h-16 object-contain rounded-lg shrink-0"
+          />
+          <div className="text-left">
+            <h2 className="text-2xl font-black uppercase text-slate-900 tracking-tight leading-none">
+              {company?.company_name || 'R.P. BUILDERS PVT. LTD.'}
+            </h2>
+            <p className="text-xs text-slate-700 mt-0.5">{company?.company_name_np || 'आर. पी. विल्डर्स प्रा. लि.'}</p>
+            <p className="text-[10px] text-slate-500">{company?.company_address || company?.address || 'Kathmandu, Nepal'} • Phone: {company?.company_phone || '9800000000'} • PAN: {company?.company_pan || '601234567'}</p>
+          </div>
+        </div>
+        <h3 className="text-lg font-black mt-2 underline uppercase tracking-wide">
           दैनिक रोजनामचा खाता (DAY BOOK REGISTER)
         </h3>
-        <div className="flex justify-between text-xs mt-2 font-medium">
-          <span>मिति: <strong>{formatBSDate(dateBS, 'np')} ({dateBS} BS)</strong></span>
+        <div className="flex justify-between text-xs mt-2 font-semibold text-slate-800 border-t border-slate-300 pt-2">
+          <span>कारोबार मिति: <strong>{formatBSDate(dateBS, 'np')} ({dateBS} BS)</strong></span>
           <span>आर्थिक वर्ष: <strong>{selectedFiscalYear || currentFY.label}</strong></span>
-          <span>साइट: <strong>{selectedProject ? projects.find(p => String(p.id) === String(selectedProject))?.project_name : 'सबै साइटहरु'}</strong></span>
+          <span>साइट / आयोजना: <strong>{selectedProject ? projects.find(p => String(p.id) === String(selectedProject))?.project_name : 'सबै साइटहरु (All Sites)'}</strong></span>
         </div>
       </div>
 
@@ -679,22 +684,22 @@ export default function DayBook() {
       )}
 
       {/* Print Signature Section */}
-      <div className="hidden print:grid grid-cols-4 gap-6 pt-16 text-center text-xs font-bold text-slate-800 border-t-2 border-slate-800 mt-8">
+      <div className="hidden print:grid grid-cols-4 gap-6 pt-16 text-center text-xs font-bold text-slate-800 border-t-2 border-slate-800 mt-12 print-signature-block">
         <div>
           <div className="border-b border-slate-400 mb-2 pb-6" />
-          <span>लेखापाल (Accountant)</span>
+          <span>तयार गर्ने / लेखापाल<br />(Accountant)</span>
         </div>
         <div>
           <div className="border-b border-slate-400 mb-2 pb-6" />
-          <span>साइट इन्चार्ज (Site In-charge)</span>
+          <span>साइट इन्चार्ज<br />(Site In-charge)</span>
         </div>
         <div>
           <div className="border-b border-slate-400 mb-2 pb-6" />
-          <span>आन्तरिक लेखापरीक्षक (Auditor)</span>
+          <span>आन्तरिक लेखापरीक्षक<br />(Internal Auditor)</span>
         </div>
         <div>
           <div className="border-b border-slate-400 mb-2 pb-6" />
-          <span>प्रबन्ध निर्देशक (Managing Director)</span>
+          <span>प्रबन्ध निर्देशक<br />(Managing Director)</span>
         </div>
       </div>
     </div>

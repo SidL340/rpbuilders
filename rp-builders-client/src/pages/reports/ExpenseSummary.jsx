@@ -4,12 +4,14 @@ import { PieChart, ArrowLeft, Printer, Filter, Calendar } from 'lucide-react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell } from 'recharts';
 import { reportsAPI, projectsAPI } from '../../services/api';
 import { formatNPR } from '../../utils/helpers';
+import { useCompany } from '../../contexts/CompanyContext';
 import Loader from '../../components/ui/Loader';
 import toast from 'react-hot-toast';
 
 const COLORS = ['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#64748b'];
 
 export default function ExpenseSummary() {
+  const { company } = useCompany();
   const [data, setData] = useState({ items: [], grandTotal: 0 });
   const [projects, setProjects] = useState([]);
   const [projectFilter, setProjectFilter] = useState('');
@@ -128,9 +130,29 @@ export default function ExpenseSummary() {
 
       {/* Table Section */}
       <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden print:border-none print:shadow-none">
-        <div className="hidden print:block p-6 text-center border-b border-slate-300">
-          <h1 className="text-2xl font-black text-slate-900">R.P. BUILDERS PVT. LTD.</h1>
-          <h2 className="text-sm font-bold mt-1 uppercase underline">CATEGORY-WISE EXPENDITURE AUDIT REPORT</h2>
+        <div className="hidden print:block text-center border-b-2 border-slate-900 pb-4 mb-4 font-sans print-header">
+          <div className="flex items-center justify-center gap-4 mb-2">
+            <img
+              src={company?.company_logo_data || '/logo.png'}
+              alt={company?.company_name || 'Logo'}
+              onError={(e) => { e.currentTarget.src = '/logo.png'; }}
+              className="w-16 h-16 object-contain rounded-lg shrink-0"
+            />
+            <div className="text-left">
+              <h2 className="text-2xl font-black uppercase text-slate-900 tracking-tight leading-none">
+                {company?.company_name || 'R.P. BUILDERS PVT. LTD.'}
+              </h2>
+              <p className="text-xs text-slate-700 mt-0.5">{company?.company_name_np || 'आर. पी. विल्डर्स प्रा. लि.'}</p>
+              <p className="text-[10px] text-slate-500">{company?.company_address || company?.address || 'Kathmandu, Nepal'} • Phone: {company?.company_phone || '9800000000'} • PAN: {company?.company_pan || '601234567'}</p>
+            </div>
+          </div>
+          <h3 className="text-lg font-black mt-2 underline uppercase tracking-wide">
+            खर्च शीर्षक अनुसार अडिट रिपोर्ट (CATEGORY-WISE EXPENDITURE AUDIT REPORT)
+          </h3>
+          <div className="flex justify-between text-xs mt-2 font-semibold text-slate-800 border-t border-slate-300 pt-2">
+            <span>आयोजना / साइट: <strong>{projectFilter ? projects.find(p => String(p.id) === String(projectFilter))?.project_name : 'सबै साइटहरु (All Projects)'}</strong></span>
+            <span>अवधि: <strong>{fromBs || 'सुरु'} देखि {toBs || 'हालसम्म'}</strong></span>
+          </div>
         </div>
 
         <div className="overflow-x-auto">
@@ -190,6 +212,22 @@ export default function ExpenseSummary() {
               )}
             </table>
           )}
+        </div>
+      </div>
+
+      {/* Print Signature Section */}
+      <div className="hidden print:grid grid-cols-3 gap-6 pt-16 text-center text-xs font-bold text-slate-800 border-t-2 border-slate-800 mt-12 print-signature-block">
+        <div>
+          <div className="border-b border-slate-400 mb-2 pb-6" />
+          <span>लेखापाल / तयार गर्ने<br />(Accountant)</span>
+        </div>
+        <div>
+          <div className="border-b border-slate-400 mb-2 pb-6" />
+          <span>आन्तरिक लेखापरीक्षक<br />(Auditor)</span>
+        </div>
+        <div>
+          <div className="border-b border-slate-400 mb-2 pb-6" />
+          <span>प्रबन्ध निर्देशक<br />(Managing Director)</span>
         </div>
       </div>
     </div>

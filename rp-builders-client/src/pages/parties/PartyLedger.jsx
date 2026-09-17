@@ -158,30 +158,30 @@ export default function PartyLedger() {
       </div>
 
       {/* Printable Report Header */}
-      <div className="hidden print:block text-center border-b-2 border-slate-800 pb-4 mb-4">
-        {company?.company_logo_data ? (
+      <div className="hidden print:block text-center border-b-2 border-slate-900 pb-4 mb-4 font-sans print-header">
+        <div className="flex items-center justify-center gap-4 mb-2">
           <img
-            src={company.company_logo_data}
+            src={company?.company_logo_data || '/logo.png'}
             alt={company?.company_name || 'Logo'}
-            className="h-16 max-w-[200px] object-contain mx-auto mb-2"
+            onError={(e) => { e.currentTarget.src = '/logo.png'; }}
+            className="w-16 h-16 object-contain rounded-lg shrink-0"
           />
-        ) : (
-          <h2 className="text-2xl font-black uppercase text-slate-900 tracking-tight">
-            {company?.company_name || 'R.P. BUILDERS PVT. LTD.'}
-          </h2>
-        )}
-        <h2 className="text-xl font-black uppercase text-slate-900 tracking-tight">
-          {company?.company_name || 'R.P. BUILDERS PVT. LTD.'}
-        </h2>
-        <p className="text-xs text-slate-600">{company?.address || 'Nepal'} • Construction Accounting Portal • PAN: {company?.pan_no || '600123456'}</p>
-        <h3 className="text-lg font-bold mt-2 underline">
-          पार्टी लेजर खाता (PARTY ACCOUNT STATEMENT): {party.party_name}
+          <div className="text-left">
+            <h2 className="text-2xl font-black uppercase text-slate-900 tracking-tight leading-none">
+              {company?.company_name || 'R.P. BUILDERS PVT. LTD.'}
+            </h2>
+            <p className="text-xs text-slate-700 mt-0.5">{company?.company_name_np || 'आर. पी. विल्डर्स प्रा. लि.'}</p>
+            <p className="text-[10px] text-slate-500">{company?.company_address || company?.address || 'Kathmandu, Nepal'} • Phone: {company?.company_phone || '9800000000'} • PAN: {company?.company_pan || '601234567'}</p>
+          </div>
+        </div>
+        <h3 className="text-lg font-black mt-2 underline uppercase tracking-wide">
+          पार्टी लेजर खाता विवरण (PARTY ACCOUNT STATEMENT)
         </h3>
-        <div className="flex justify-between text-xs mt-2 font-medium">
-          <span>Party Code: <strong>{party.party_code}</strong> ({party.party_type})</span>
-          <span>Phone: <strong>{party.phone || '—'}</strong></span>
+        <div className="flex justify-between text-xs mt-2 font-semibold text-slate-800 border-t border-slate-300 pt-2">
+          <span>पार्टी: <strong>{party.party_name}</strong> ({party.party_code})</span>
+          <span>प्रकार: <strong>{party.party_type}</strong> | फोन: <strong>{party.phone || '—'}</strong></span>
           <span>PAN/VAT: <strong>{party.pan_no || '—'}</strong></span>
-          <span>आ.व.: <strong>{selectedFY || 'All'}</strong></span>
+          <span>आ.व.: <strong>{selectedFY || 'सबै (All)'}</strong></span>
         </div>
       </div>
 
@@ -277,18 +277,18 @@ export default function PartyLedger() {
       </div>
 
       {/* Print Signature Section */}
-      <div className="hidden print:grid grid-cols-3 gap-6 pt-16 text-center text-xs font-bold text-slate-800 border-t-2 border-slate-800 mt-8">
+      <div className="hidden print:grid grid-cols-3 gap-6 pt-16 text-center text-xs font-bold text-slate-800 border-t-2 border-slate-800 mt-12 print-signature-block">
         <div>
           <div className="border-b border-slate-400 mb-2 pb-6" />
-          <span>पार्टी प्रतिनिधि हस्ताक्षर (Party Signature)</span>
+          <span>पार्टी / आपूर्तिकर्ता हस्ताक्षर<br />(Party Representative)</span>
         </div>
         <div>
           <div className="border-b border-slate-400 mb-2 pb-6" />
-          <span>लेखा अधिकृत (Accounts Officer)</span>
+          <span>लेखा अधिकृत<br />(Accounts Officer)</span>
         </div>
         <div>
           <div className="border-b border-slate-400 mb-2 pb-6" />
-          <span>प्रबन्ध निर्देशक (Managing Director)</span>
+          <span>प्रबन्ध निर्देशक<br />(Managing Director)</span>
         </div>
       </div>
     </div>
